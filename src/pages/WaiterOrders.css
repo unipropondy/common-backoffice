@@ -1,0 +1,535 @@
+/* WaiterOrders.css - Compact, Clean, Orange & White UI */
+
+:root {
+  --primary-orange: #ff6b00;
+  --primary-orange-hover: #e85f00;
+  --soft-orange: #fff3e8;
+  --lighter-orange: #fff8f2;
+  --white: #ffffff;
+  --background: #faf9f7;
+  --text-primary: #172033;
+  --text-secondary: #5f6675;
+  --border: #eee5dc;
+}
+
+.waiter-orders-page {
+  width: 100%;
+  background-color: var(--background);
+  min-height: 100vh;
+  padding: 16px;
+  font-family: 'Cambria', 'Inter', serif;
+  box-sizing: border-box;
+}
+
+.waiter-orders-page.sidebar-open {
+  padding-left: 16px;
+}
+
+.wo-container {
+  max-width: 1300px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* 1. HEADER CARD (Compact) */
+.wo-header-card {
+  background: var(--white);
+  padding: 14px 20px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  box-shadow: 0 2px 10px rgba(255, 107, 0, 0.03);
+  margin-bottom: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.wo-header-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.wo-header-icon-circle {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--soft-orange);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary-orange);
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.wo-header-title-area h1 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.wo-header-title-area p {
+  margin: 2px 0 0 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.wo-header-underline {
+  width: 36px;
+  height: 2.5px;
+  background-color: var(--primary-orange);
+  border-radius: 2px;
+  margin-top: 4px;
+}
+
+/* 2. FILTER CARD (Compact single row) */
+.wo-filter-card {
+  background: var(--white);
+  padding: 14px 20px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  box-shadow: 0 2px 10px rgba(255, 107, 0, 0.03);
+  margin-bottom: 16px;
+}
+
+.wo-filter-grid {
+  display: grid;
+  grid-template-columns: 2fr 2fr 2fr 1fr;
+  gap: 16px;
+  align-items: flex-end;
+}
+
+@media (max-width: 900px) {
+  .wo-filter-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.wo-filter-item {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.wo-filter-item label {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.wo-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.wo-input-icon {
+  position: absolute;
+  left: 12px;
+  color: var(--primary-orange);
+  font-size: 13px;
+  pointer-events: none;
+}
+
+.wo-filter-select {
+  width: 100%;
+  padding: 6px 12px 6px 38px !important;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  font-size: 12.5px;
+  background: var(--white);
+  height: 36px;
+  outline: none;
+  font-family: inherit;
+  color: var(--text-primary);
+  box-sizing: border-box;
+  transition: all 0.2s ease;
+}
+
+.wo-filter-date {
+  width: 100%;
+  padding: 6px 12px !important;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  font-size: 12.5px;
+  background: var(--white);
+  height: 36px;
+  outline: none;
+  font-family: inherit;
+  color: var(--text-primary);
+  box-sizing: border-box;
+  transition: all 0.2s ease;
+}
+
+.wo-filter-select:focus,
+.wo-filter-date:focus {
+  border-color: var(--primary-orange);
+  box-shadow: 0 0 0 3px rgba(255, 107, 0, 0.08);
+}
+
+.wo-btn-search {
+  width: 100%;
+  background: var(--primary-orange);
+  color: var(--white);
+  border: none;
+  height: 36px;
+  padding: 0 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 2px 8px rgba(255, 107, 0, 0.2);
+}
+
+.wo-btn-search:hover:not(:disabled) {
+  background: var(--primary-orange-hover);
+  transform: translateY(-1px);
+}
+
+.wo-btn-search:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* 3. SUMMARY CARDS (2 Cards Only) */
+.wo-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+@media (max-width: 600px) {
+  .wo-summary-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.wo-summary-card {
+  background: var(--lighter-orange);
+  padding: 14px 20px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  box-shadow: 0 2px 8px rgba(255, 107, 0, 0.03);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.wo-summary-icon-box {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: var(--soft-orange);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary-orange);
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.wo-summary-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.wo-summary-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.wo-summary-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* 4. MAIN TABLE CARD (Compact 4 columns) */
+.wo-table-card {
+  background: var(--white);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  box-shadow: 0 2px 10px rgba(255, 107, 0, 0.03);
+  overflow: hidden;
+}
+
+.wo-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.wo-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.wo-table th {
+  background-color: var(--lighter-orange);
+  color: var(--text-secondary);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.wo-table th .wo-th-flex {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.wo-table td {
+  padding: 10px 16px;
+  color: var(--text-primary);
+  font-size: 12.5px;
+  border-bottom: 1px solid #f7f3ee;
+  vertical-align: middle;
+}
+
+.wo-table tbody tr:hover {
+  background-color: var(--lighter-orange);
+}
+
+.wo-date-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.wo-date-cell-icon {
+  color: var(--primary-orange);
+  font-size: 14px;
+}
+
+.wo-date-cell-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.wo-date-main {
+  font-weight: 700;
+  font-size: 12.5px;
+  color: var(--text-primary);
+}
+
+.wo-time-sub {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+/* Amount Badge */
+.wo-amount-badge {
+  display: inline-block;
+  background: var(--soft-orange);
+  color: var(--primary-orange);
+  font-weight: 700;
+  font-size: 12.5px;
+  padding: 4px 12px;
+  border-radius: 6px;
+}
+
+/* View Details Action Button */
+.wo-btn-view-details {
+  background: var(--white);
+  color: var(--primary-orange);
+  border: 1.5px solid var(--primary-orange);
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.wo-btn-view-details:hover {
+  background: var(--primary-orange);
+  color: var(--white);
+}
+
+/* Empty State */
+.wo-empty-state {
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--text-secondary);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.wo-empty-icon-box {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--soft-orange);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary-orange);
+  font-size: 24px;
+  margin-bottom: 12px;
+}
+
+.wo-empty-state h3 {
+  margin: 0 0 4px 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.wo-empty-state p {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* 5. VIEW DETAILS MODAL (Compact) */
+.wo-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(23, 32, 51, 0.45);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2100;
+  backdrop-filter: blur(3px);
+  padding: 16px;
+}
+
+.wo-modal-content {
+  background: var(--white);
+  border-radius: 14px;
+  width: 440px;
+  max-width: 100%;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  animation: woModalFade 0.2s ease-out;
+}
+
+@keyframes woModalFade {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.wo-modal-header {
+  padding: 14px 18px;
+  background: var(--lighter-orange);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.wo-modal-header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.wo-modal-header-left h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.wo-modal-close-btn {
+  background: transparent;
+  border: none;
+  font-size: 16px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+}
+
+.wo-modal-close-btn:hover {
+  background: var(--soft-orange);
+  color: var(--primary-orange);
+}
+
+.wo-modal-body {
+  padding: 18px;
+}
+
+.wo-modal-info-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.wo-modal-info-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  background: var(--background);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
+.wo-modal-info-label {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+}
+
+.wo-modal-info-val {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.wo-modal-footer {
+  padding: 12px 18px;
+  background: var(--lighter-orange);
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.wo-btn-modal-close {
+  background: var(--primary-orange);
+  color: var(--white);
+  border: none;
+  padding: 6px 18px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.wo-btn-modal-close:hover {
+  background: var(--primary-orange-hover);
+}

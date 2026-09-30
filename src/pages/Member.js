@@ -570,7 +570,7 @@ const [icFile, setIcFile] = useState(null);
         </div>
 
          <div className="mem-form-row">
-          <label>Current Balance</label>
+          <label>Consumed</label>
           <input
             name="currentBalance"
             value={form.currentBalance}

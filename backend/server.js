@@ -55,6 +55,16 @@ app.use("/api/rewardpoints", rewardRoutes);
 const comboRoutes = require("./routes/comboRoutes");
 
 app.use("/api/combo", comboRoutes);
+const dayEndReportRoutes = require("./routes/dayendreportroutes");
+app.use("/api/dayendreport", dayEndReportRoutes);
+const memberMasterRoutes = require("./routes/memberMasterRoutes");
+app.use("/api/member", memberMasterRoutes);
+
+const waiterOrdersRoutes = require("./routes/waiterOrdersRoutes");
+app.use("/api/waiter-orders", waiterOrdersRoutes);
+
+const salesreportRoutes = require("./routes/salesreportRoutes");
+app.use("/api/reports", salesreportRoutes);
 
 const promoCodeRoute = require("./routes/promoCodeRoute");
 
@@ -647,7 +657,7 @@ WHERE CategoryId=@CategoryId
     await pool.request()
       .input("CategoryId", sql.UniqueIdentifier, catId)
       .query("DELETE FROM CategoryModifier WHERE CategoryId=@CategoryId");
-    
+
     for (let modId of safeModifiers) {
       if (modId) {
         await pool

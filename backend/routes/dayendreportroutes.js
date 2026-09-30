@@ -1,28 +1,27 @@
 const express = require('express');
 const router = express.Router();
 const { sql, poolPromise } = require('../db');
- 
+
 router.get('/', async (req, res) => {
     try {
         const { fromDate, toDate } = req.query;
         console.log(`📅 Day End Report - From: ${fromDate}, To: ${toDate}`);
-       
+
         const pool = await poolPromise;
- 
+
         // Organization Info
         const orgQuery = `
-            SELECT TOP 1
-                Name,
-                Address1_Line1,
-                Address1_Line2,
-                Address1_City,
-                Address1_PostalCode,
-                Address1_Telephone1
-            FROM Organization
-        `;
-        const orgResult = await pool.request().query(orgQuery);
-        const orgInfo = orgResult.recordset[0] || {};
- 
+    SELECT TOP 1
+        CompanyName,
+        Address,
+        Phone,
+        Email
+    FROM companysettings
+`;
+
+const orgResult = await pool.request().query(orgQuery);
+const orgInfo = orgResult.recordset[0] || {};
+
         // 1. Get SettlementHeader data
         let headerQuery = `
             SELECT
@@ -37,26 +36,27 @@ router.get('/', async (req, res) => {
                 ISNULL(VoidItemAmount, 0) as VoidItemAmount,
                 ISNULL(TerminalCode, 'SR') as TerminalCode,
                 ISNULL(DayendRefNo, 'D000001') as DayendRefNo,
-                LastSettlementDate
+                start_date
             FROM SettlementHeader
-            WHERE 1=1
         `;
- 
+
         if (fromDate && toDate) {
-            headerQuery += ` AND CAST(LastSettlementDate AS DATE) BETWEEN @start AND @end`;
+            headerQuery += `
+WHERE CAST(start_date AS DATE) BETWEEN @start AND @end
+`;
         }
- 
+
         const headerRequest = pool.request();
         if (fromDate && toDate) {
             headerRequest.input('start', sql.Date, fromDate);
             headerRequest.input('end', sql.Date, toDate);
         }
-       
+
         const headerResult = await headerRequest.query(headerQuery);
         const headers = headerResult.recordset;
- 
+
         console.log(`📊 Found ${headers.length} settlement records`);
- 
+
         if (headers.length === 0) {
             return res.json({
                 success: true,
@@ -73,64 +73,106 @@ router.get('/', async (req, res) => {
                 }
             });
         }
- 
-        // Get SettlementID
-        const settlementId = headers[0]?.SettlementID;
-       
-        // 2. Get Cash Amount and ReceiptCount from SettlementDetail table
+
+        const settlementIds = headers.map(h => h.SettlementID).filter(Boolean);
+
+        // 2. Get Payment Mode Breakdown from PaymentDetail
+        const paymodeQuery = `
+            SELECT 
+                pm.PayMode AS PayModeName,
+                COUNT(DISTINCT ri.BillNumber) AS TransactionCount,
+                SUM(pd.Amount) AS TotalAmount
+            FROM dbo.PaymentDetail pd
+            INNER JOIN (
+                SELECT RestaurantBillId, BillNumber, start_date FROM dbo.RestaurantInvoice WHERE OrderId != '1CC2777F-8C8E-4902-AAC5-D7D9DD098F8D'
+                UNION
+                SELECT RestaurantBillId, BillNumber, start_date FROM dbo.RestaurantInvoiceCur WHERE OrderId != '1CC2777F-8C8E-4902-AAC5-D7D9DD098F8D'
+            ) ri ON pd.RestaurantBillId = ri.RestaurantBillId
+            INNER JOIN dbo.Paymode pm ON pd.Paymode = pm.Position
+            WHERE CAST(ri.start_date AS DATE) BETWEEN @start AND @end
+            GROUP BY pm.PayMode
+            ORDER BY pm.PayMode
+        `;
+
+        const paymodeRequest = pool.request();
+        paymodeRequest.input('start', sql.Date, fromDate);
+        paymodeRequest.input('end', sql.Date, toDate);
+        const paymodeResult = await paymodeRequest.query(paymodeQuery);
+        
         let cashTotal = 0;
+        let netsTotal = 0;
+        let paynowTotal = 0;
         let cardTotal = 0;
+        let upiTotal = 0;
         let receiptCount = 0;
         const paymodeDetail = {};
-       
-        if (settlementId) {
-            const detailQuery = `
-                SELECT
-                    Paymode,
-                    ISNULL(SysAmount, 0) as Amount,
-                    ISNULL(ReceiptCount, 0) as ReceiptCount
-                FROM SettlementDetail
-                WHERE SettlementId = @settlementId
-            `;
-           
-            const detailRequest = pool.request();
-            detailRequest.input('settlementId', sql.UniqueIdentifier, settlementId);
-            const detailResult = await detailRequest.query(detailQuery);
-            const details = detailResult.recordset;
-           
-            console.log("SettlementDetail Records:", details);
-           
-            details.forEach(detail => {
-                if (detail.Amount > 0) {
-                    paymodeDetail[detail.Paymode] = detail.Amount;
-                    if (detail.Paymode === 'CASH') {
-                        cashTotal = detail.Amount;
-                        receiptCount = detail.ReceiptCount;
-                        console.log(`Found CASH - Amount: ${cashTotal}, ReceiptCount: ${receiptCount}`);
-                    }
-                    if (detail.Paymode === 'CARD' || detail.Paymode === 'NETS' || detail.Paymode === 'PAYNOW') {
-                        cardTotal += detail.Amount;
-                    }
-                }
-            });
-        }
- 
-        // Calculate totals from SettlementHeader
-        const totalSales = headers.reduce((sum, s) => sum + (s.TotalSales || 0), 0);
-        const totalRoundOff = headers.reduce((sum, s) => sum + (s.RoundOff || 0), 0);
-        const totalTax = headers.reduce((sum, s) => sum + (s.TotalTax || 0), 0);
-        const totalDiscount = headers.reduce((sum, s) => sum + (s.Discount || 0), 0);
-        const totalServiceCharge = headers.reduce((sum, s) => sum + (s.ServiceCharge || 0), 0);
+
+        paymodeResult.recordset.forEach(row => {
+            const mode = (row.PayModeName || '').trim().toUpperCase();
+            const amount = row.TotalAmount || 0;
+            const count = row.TransactionCount || 0;
+            
+            paymodeDetail[mode] = {
+                amount: amount,
+                receiptCount: count
+            };
+            
+            if (mode === 'CASH') {
+                cashTotal = amount;
+                receiptCount = count;
+            } else if (mode === 'NETS') {
+                netsTotal = amount;
+            } else if (mode === 'PAYNOW') {
+                paynowTotal = amount;
+            } else if (['VISA', 'MASTERCARD', 'AMEX', 'DINERS', 'JCB'].includes(mode)) {
+                cardTotal += amount;
+            } else if (mode === 'UPI' || mode === 'UPI/GPAY') {
+                upiTotal += amount;
+            }
+        });
+
+        // Calculate totals from de-duplicated invoice union
+        const salesSummaryQuery = `
+            SELECT
+                COUNT(DISTINCT ri.BillNumber) as TotalBills,
+                ISNULL(SUM(ri.TotalAmount), 0) as TotalNetSales,
+                ISNULL(SUM(ri.ServiceCharge), 0) as TotalServiceCharge,
+                ISNULL(SUM(ri.TotalTax), 0) as TotalTax,
+                ISNULL(SUM(ri.TotalDiscountAmount), 0) as TotalDiscount,
+                ISNULL(SUM(ri.RoundedBy), 0) as TotalRoundOff,
+                ISNULL(SUM(ri.TotalAmount + ri.ServiceCharge + ri.TotalTax + ri.RoundedBy), 0) as TotalRevenue
+            FROM (
+                SELECT RestaurantBillId, BillNumber, TotalAmount, ServiceCharge, TotalTax, TotalDiscountAmount, RoundedBy, start_date 
+                FROM dbo.RestaurantInvoice WHERE OrderId != '1CC2777F-8C8E-4902-AAC5-D7D9DD098F8D'
+                UNION
+                SELECT RestaurantBillId, BillNumber, TotalAmount, ServiceCharge, TotalTax, TotalDiscountAmount, RoundedBy, start_date 
+                FROM dbo.RestaurantInvoiceCur WHERE OrderId != '1CC2777F-8C8E-4902-AAC5-D7D9DD098F8D'
+            ) ri
+            WHERE CAST(ri.start_date AS DATE) BETWEEN @start AND @end
+        `;
+
+        const salesSummaryRequest = pool.request();
+        salesSummaryRequest.input('start', sql.Date, fromDate);
+        salesSummaryRequest.input('end', sql.Date, toDate);
+        const salesSummaryResult = await salesSummaryRequest.query(salesSummaryQuery);
+        const salesSummary = salesSummaryResult.recordset[0] || {};
+
+        const totalSales = salesSummary.TotalNetSales || 0;
+        const totalRoundOff = salesSummary.TotalRoundOff || 0;
+        const totalTax = salesSummary.TotalTax || 0;
+        const totalDiscount = salesSummary.TotalDiscount || 0;
+        const totalServiceCharge = salesSummary.TotalServiceCharge || 0;
+        const noOfBills = salesSummary.TotalBills || 0;
+        const netTotal = totalSales + totalRoundOff;
+        const avgPerBill = noOfBills > 0 ? (totalSales / noOfBills).toFixed(2) : 0;
+
+        // Void details from SettlementHeader (if available)
         const totalVoidQty = headers.reduce((sum, s) => sum + (s.VoidQty || 0), 0);
         const totalVoidItemAmount = headers.reduce((sum, s) => sum + (s.VoidItemAmount || 0), 0);
-       
-        const netTotal = totalSales + totalRoundOff;
-        const noOfBills = headers.reduce((sum, s) => sum + (s.NoOfBills || 0), 0);
-        const avgPerBill = noOfBills > 0 ? (totalSales / noOfBills).toFixed(2) : 0;
- 
+
         const terminalCode = headers[0]?.TerminalCode || "";
         const dayendRefNo = headers[0]?.DayendRefNo || "";
- 
+
         const reportData = {
             cashier: terminalCode,
             receiptCount: receiptCount,
@@ -159,9 +201,9 @@ router.get('/', async (req, res) => {
                 voidItemAmount: totalVoidItemAmount
             }
         };
- 
+
         console.log(`FINAL - Cash: ${cashTotal}, ReceiptCount: ${receiptCount}, Bills: ${noOfBills}, RefNo: ${dayendRefNo}`);
- 
+
         res.json({
             success: true,
             orgInfo: orgInfo,
@@ -169,7 +211,7 @@ router.get('/', async (req, res) => {
             fromDate: fromDate,
             toDate: toDate
         });
- 
+
     } catch (err) {
         console.error("Dayend Report Error:", err);
         res.status(500).json({
@@ -178,29 +220,29 @@ router.get('/', async (req, res) => {
         });
     }
 });
- 
+
 // Get available dates
 router.get('/dates', async (req, res) => {
     try {
         const pool = await poolPromise;
-       
+
         const result = await pool.request().query(`
             SELECT DISTINCT
-                CAST(LastSettlementDate AS DATE) as OrderDate,
+                CAST(start_date AS DATE) as OrderDate,
                 COUNT(*) as OrderCount,
                 SUM(ISNULL(SubTotal, 0)) as TotalAmount,
                 SUM(ISNULL(InvoiceCount, 0)) as TotalBills
             FROM SettlementHeader
-            WHERE LastSettlementDate IS NOT NULL
-            GROUP BY CAST(LastSettlementDate AS DATE)
-            ORDER BY CAST(LastSettlementDate AS DATE) DESC
+            WHERE start_date IS NOT NULL
+            GROUP BY CAST(start_date AS DATE)
+            ORDER BY CAST(start_date AS DATE) DESC
         `);
-       
+
         res.json({
             success: true,
             dates: result.recordset
         });
-       
+
     } catch (err) {
         console.error("Error fetching dates:", err);
         res.status(500).json({
@@ -209,6 +251,6 @@ router.get('/dates', async (req, res) => {
         });
     }
 });
- 
+
 module.exports = router;
- 
+

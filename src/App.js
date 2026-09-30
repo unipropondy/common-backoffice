@@ -45,12 +45,8 @@ import DishOrderItemShare from "./pages/DishOrderItemShare";
 import QRCode from "./pages/QRCode";
 import PromoCodeMaster from "./pages/PromoCodeMaster";
 import QR from "./pages/qr";
-
-
-
-// import { LoaderProvider } from "./context/LoaderContext";
-
-// import GlobalLoader from "./components/GlobalLoader";
+import MemberMaster from "./pages/MemberMaster";
+import WaiterOrders from "./pages/WaiterOrders";
 
 function Layout() {
   const [open, setOpen] = useState(true);
@@ -85,6 +81,8 @@ function Layout() {
           <Route path="/Vendormaster" element={<VendorMaster />} />
           <Route path="/Member" element={<Member />} />
           <Route path="/Member/:id" element={<Member />} />
+          <Route path="/MemberMaster" element={<MemberMaster sidebarOpen={open} />} />
+          <Route path="/WaiterOrders" element={<WaiterOrders sidebarOpen={open} />} />
           <Route path="/Paymode" element={<Paymode />} />
           <Route path="/PickList" element={<PickList />} />
           <Route path="/Terminal" element={<Terminal />} />
