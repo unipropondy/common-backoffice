@@ -1,0 +1,41 @@
+/* =========================================
+   THEME SWITCHER
+========================================= */
+.theme-switcher {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background: var(--bg-muted);
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border);
+}
+
+.theme-dot {
+  width: 18px !important;
+  height: 18px !important;
+  min-width: 18px !important;
+  min-height: 18px !important;
+  border-radius: 50% !important;
+  border: 2.5px solid rgba(255,255,255,0.6) !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.15) !important;
+  outline: none !important;
+  flex-shrink: 0;
+  display: block !important;
+  /* background-color comes from inline style */
+}
+
+.theme-dot:hover {
+  transform: scale(1.25) !important;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.25) !important;
+}
+
+.theme-dot.active {
+  border: 2.5px solid white !important;
+  box-shadow: 0 0 0 2.5px rgba(0,0,0,0.25) !important;
+  transform: scale(1.2) !important;
+}

@@ -1,0 +1,124 @@
+body {
+  margin: 0;
+}
+ 
+.pos-page {
+  padding: 0px 30px;
+}
+ 
+.pos-title {
+  font-size: 22px;
+  margin-top: 0;
+  margin-bottom: 8px;
+}
+ 
+.pos-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+ 
+.lov-box {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+  height: 300px;
+}
+ 
+.lov-label {
+  font-size: 14px;
+  font-weight: 500;
+}
+ 
+.lov-box input {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px 0 0 6px;
+  width: 200px;
+}
+ 
+.lov-search {
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-left: none;
+  background: var(--bg-muted);
+  color: #fff;
+  border-radius: 0 6px 6px 0;
+  cursor: pointer;
+}
+ 
+.lov-search:hover {
+  background: var(--primary);
+}
+ 
+.btn-load {
+  padding: 8px 14px;
+  background: var(--bg-muted);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+ 
+.btn-save {
+  padding: 8px 14px;
+  background: var(--bg-muted);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+ 
+/* 🔥 TABLE FIXED */
+.pos-table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid var(--border);
+}
+ 
+.pos-table thead th {
+  background: var(--bg-muted);
+  color: #fff;
+  padding: 10px;
+  border: 1px solid var(--border);
+}
+ 
+.pos-table tbody td {
+  padding: 10px;
+  border: 1px solid var(--border);
+  text-align: center;
+}
+ 
+/* .pos-table tbody tr:hover {
+  background: var(--primary);
+} */
+ 
+.lov-box select {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  width: 220px;
+}
+ 
+.lov-container {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+ 
+.lov-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+ 
+.lov-row select {
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  min-width: 200px;
+}
+ 

@@ -1,0 +1,165 @@
+/* Page container */
+.cancel-container {
+  padding: 20px;
+  font-family: "Segoe UI", sans-serif;
+}
+
+/* Header */
+.cancel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.cancel-header h2 {
+  margin: 0;
+}
+
+/* New button */
+.cancel-new-btn {
+  background: var(--bg-muted);
+  color: white;
+  border: none;
+  padding: 8px 15px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.cancel-new-btn:hover {
+  background: var(--primary);
+}
+
+/* Table */
+.cancel-table {
+  width: 100%;
+  border-collapse: collapse;
+  /* background: var(--danger); color: white; */
+}
+
+.cancel-table th,
+.cancel-table td {
+  padding: 10px;
+  border: 1px solid var(--border);
+  text-align: left;
+}
+
+.cancel-table th {
+  background: var(--primary);
+}
+
+.cancel-table tr:hover {
+  /* background: var(--primary); */
+  cursor: pointer;
+}
+
+/* 🔥 Modal Overlay */
+.cancel-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.4);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Modal Box */
+.cancel-modal-box {
+  width: 500px;
+  background:  white;
+  padding: 30px;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+}
+
+/* Title */
+.cancel-title {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+/* Form Grid */
+.cancel-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+}
+
+/* Full width */
+.full {
+  grid-column: span 2;
+}
+
+/* Form group */
+.cancel-form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.cancel-form-group label {
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+
+/* Input */
+.cancel-form-group input {
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  outline: none;
+  transition: 0.2s;
+}
+
+.cancel-form-group input:focus {
+  border-color: #007bff;
+  box-shadow: 0 0 5px rgba(0,123,255,0.3);
+}
+
+/* Buttons */
+.actions {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 10px;
+}
+
+.btn,
+.cancel-btn {
+  padding: 10px 15px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+/* Save */
+.cl-save {
+  background: var(--bg-muted);
+  color: white;
+}
+
+.cl-save:hover {
+  background: var(--primary);
+}
+
+/* Delete */
+.delete {
+  background: var(--bg-muted);
+  color: white;
+}
+
+.delete:hover {
+  background: var(--primary);
+}
+
+/* Exit */
+.exit {
+  background: var(--bg-muted);
+  color: white;
+}
+
+.exit:hover {
+  background: var(--primary);
+}

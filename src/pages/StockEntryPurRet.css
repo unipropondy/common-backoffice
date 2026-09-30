@@ -1,0 +1,205 @@
+/* 🔥 Main Container */
+.ret_trans-container {
+  padding: 20px;
+  background: #f9fafb;
+  min-height: 100vh;
+  font-family: "Segoe UI", sans-serif;
+}
+
+/* 🔥 Title */
+.ret_trans-title {
+  font-size: 22px;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 15px;
+}
+
+/* 🔥 Header Box */
+.ret_trans-header-box {
+  background: #ffffff;
+  border-radius: 10px;
+  padding: 15px;
+  margin-bottom: 15px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+}
+
+/* 🔥 Header Row */
+.ret_trans-header-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.ret_trans-header-row label {
+  font-size: 13px;
+  color: #374151;
+  font-weight: 500;
+}
+
+/* 🔥 Inputs */
+.ret_trans-box {
+  padding: 6px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  outline: none;
+  font-size: 13px;
+  transition: 0.2s;
+}
+
+.ret_trans-box:focus {
+  border-color: #ef4444; /* 🔥 red theme for return */
+  box-shadow: 0 0 0 1px #ef4444;
+}
+
+.ret_trans-long {
+  width: 200px;
+}
+
+.ret_trans-small {
+  width: 50px;
+  text-align: center;
+}
+
+/* 🔥 Toolbar */
+.ret_trans-toolbar {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+/* 🔥 Buttons */
+.ret_trans-add-btn {
+  background: #10b981;
+  color: white;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.ret_trans-add-btn:hover {
+  background: #059669;
+}
+
+.ret_trans-save-btn {
+  background: #2563eb;
+  color: white;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.ret_trans-save-btn:hover {
+  background: #1d4ed8;
+}
+
+.ret_trans-exit-btn {
+  background: #ef4444;
+  color: white;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.ret_trans-exit-btn:hover {
+  background: #dc2626;
+}
+
+/* 🔥 Table Box */
+.ret_trans-grid-box {
+  background: #ffffff;
+  border-radius: 10px;
+  padding: 10px;
+  overflow-x: auto;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+}
+
+/* 🔥 Table */
+.ret_trans-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+/* Header */
+.ret_trans-table thead {
+  background: #f3f4f6;
+}
+
+.ret_trans-table th {
+  padding: 10px;
+  text-align: left;
+  font-weight: 600;
+  color: #374151;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+/* Body */
+.ret_trans-table td {
+  padding: 8px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+/* 🔥 Input inside table */
+.ret_trans-table input {
+  width: 100%;
+  padding: 5px;
+  border: 1px solid #d1d5db;
+  border-radius: 5px;
+  font-size: 12px;
+}
+
+.ret_trans-table input:focus {
+  border-color: #ef4444;
+  outline: none;
+}
+
+/* 🔥 Empty row */
+.ret_trans-table td[colspan] {
+  text-align: center;
+  padding: 15px;
+  color: #9ca3af;
+}
+
+/* 🔥 Row Hover */
+.ret_trans-table tbody tr:hover {
+  background: #fef2f2; /* light red hover */
+}
+
+/* 🔥 Delete button inside table */
+.ret_trans-table button {
+  background: #ef4444;
+  color: white;
+  border: none;
+  padding: 4px 8px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.ret_trans-table button:hover {
+  background: #dc2626;
+}
+
+/* 🔥 Responsive */
+@media (max-width: 768px) {
+  .ret_trans-header-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .ret_trans-long {
+    width: 100%;
+  }
+  
+  .ret_trans-toolbar {
+    flex-direction: column;
+  }
+}

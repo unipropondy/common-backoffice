@@ -1,0 +1,313 @@
+/* ================= PAGE ================= */
+.Barcode-page {
+  height: 100%;
+  width: 100%;
+  padding: 10px;
+  font-family: "Segoe UI", sans-serif;
+  /* background: linear-gradient(135deg, #eef2f7, #e3e8f0);  */
+  overflow: hidden;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+   justify-content: flex-start;   /* ❌ center → ✅ top */
+  align-items: flex-start; 
+  position: relative;
+}
+ 
+/* ================= HEADER ================= */
+.Barcode-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;  
+  width: 100%; 
+  margin-bottom: 10px;
+}
+ 
+.Barcode-header h2 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 600;
+  color: #333;
+}
+ 
+.Barcode-header button {
+ background: transparent;
+  color: #ff6a00; 
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+ 
+.Barcode-header button:hover {
+  transform: scale(1.05);
+}
+ 
+/* ================= TABLE ================= */
+.Barcode-table {
+  width: 500px; /* Match Card width */
+  table-layout: fixed;
+  border-collapse: collapse;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--bg-card);
+  box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+}
+ 
+.Barcode-table th {
+  background: linear-gradient(135deg, var(--primary-dark), #5a3c65);
+  color: white;
+  text-align: left;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+}
+ 
+.Barcode-table td {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+}
+ 
+.Barcode-table tr:hover {
+  /* background: var(--primary); */
+  cursor: pointer;
+}
+ 
+/* ================= CARD ================= */
+.Barcode-card {
+  width: 500px;
+  background: var(--bg-card);
+  padding: 24px;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+}
+ 
+/* ================= FORM HEADER ================= */
+.Barcode-form-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+}
+ 
+.Barcode-form-header h2 {
+  font-size: 22px;
+  margin: 0;
+  font-weight: 600;
+}
+ 
+/* ================= BUTTONS ================= */
+.Barcode-actions {
+  display: flex;
+  gap: 10px;
+}
+ 
+.save-btn {
+  background: linear-gradient(135deg, #4caf50, #2e7d32);
+  color: white;
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+}
+ 
+.cancel-btn {
+  background: linear-gradient(135deg, #ef5350, #c62828);
+  color: white;
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+}
+ 
+.delete-btn {
+  background: linear-gradient(135deg, #455a64, #263238); /* 🔥 Dark Charcoal / Slate */
+  color: white;
+  padding: 8px 18px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: 0.2s;
+}
+ 
+.delete-btn:hover:not(:disabled) {
+  transform: scale(1.05);
+  background: linear-gradient(135deg, #263238, #1a237e); /* Darkens on hover */
+}
+ 
+/* ================= GRID ================= */
+.Barcode-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+ 
+/* ================= FORM ROW ================= */
+.form-row {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+ 
+.form-row label {
+  width: 100px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #555;
+}
+ 
+.form-row input {
+  flex: 1;
+  height: 32px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  /* background: var(--primary); */
+  font-size: 13px;
+  transition: 0.2s;
+}
+ 
+.form-row input:focus {
+  outline: none;
+  border-color: var(--primary-dark);
+  background: var(--bg-card);
+}
+ 
+/* ================= INPUT GROUP ================= */
+.input-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+ 
+/* ================= LOV BUTTON ================= */
+.lov-btn {
+  height: 32px;
+  width: 36px;
+  border-radius: 6px;
+  border: none;
+  background: linear-gradient(135deg, var(--primary-dark), #5a3c65);
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+  transition: 0.2s;
+}
+ 
+.lov-btn:hover {
+  transform: scale(1.05);
+}
+ 
+/* ================= POPUP OVERLAY ================= */
+.popup-overlay {
+  position: fixed; /* 🔥 Centered relative to screen */
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.5); /* Slightly darker for better focus */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+}
+ 
+/* ================= POPUP BOX ================= */
+.popup-box {
+  background: var(--bg-card);
+  width: 750px;
+  max-height: 500px;
+  overflow: auto;
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 15px 40px rgba(0,0,0,0.25);
+  animation: fadeIn 0.2s ease-in-out;
+}
+ 
+/* ================= POPUP HEADER ================= */
+.popup-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+ 
+.popup-header h3 {
+  margin: 0;
+  font-size: 18px;
+}
+ 
+.popup-header button {
+  /* background: var(--primary); */
+  border: none;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+ 
+/* ================= POPUP SEARCH ================= */
+.popup-search-container {
+  margin-bottom: 12px;
+}
+ 
+.popup-search-container input {
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  font-size: 14px;
+  outline: none;
+  transition: 0.2s;
+}
+ 
+.popup-search-container input:focus {
+  border-color: var(--primary-dark);
+  box-shadow: 0 0 5px rgba(111, 74, 126, 0.2);
+}
+ 
+/* ================= POPUP TABLE ================= */
+.popup-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+ 
+.popup-table th {
+  background: var(--primary); 
+  color: #000;
+  padding: 10px;
+  text-align: left;
+}
+ 
+.popup-table td {
+  padding: 10px;
+  border-bottom: 1px solid #eee;
+}
+ 
+.popup-table tr:hover {
+  /* background: var(--primary); */
+  cursor: pointer;
+}
+ 
+/* ================= EMPTY STATE ================= */
+.popup-table td[colspan] {
+  text-align: center;
+  padding: 20px;
+  color: #888;
+}
+ 
+/* ================= ANIMATION ================= */
+@keyframes fadeIn {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+ 
+ 

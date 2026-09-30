@@ -1,0 +1,157 @@
+.usergroup-container1 {
+  width: 80%;
+  margin: 0 100px;
+  font-family: Arial;
+}
+ 
+/* HEADER */
+.usergroup-top-bar1 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 0;      /* 🔥 full remove */
+  padding: 0;     /* 🔥 add this */
+}
+.usergroup-top-title1 {
+  font-size: 28px;
+  font-weight: 600;
+  margin: 0;
+  padding: 0;
+}
+ 
+.usergroup-btn-new1 {
+  background: var(--primary-dark);
+  color: #fff;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+ 
+/* TABLE */
+.usergroup-styled-table1 {
+  width: 100%;
+  border-collapse: collapse;
+   margin: 0;
+}
+ 
+.usergroup-styled-table1 th,
+.usergroup-styled-table1 td {
+  border: 1px solid var(--border);
+  padding: 10px;
+  text-align: center;
+}
+ 
+/* HEADER COLOR */
+.usergroup-styled-table1 th {
+ background: var(--primary);  /* 👈 your color */
+  color: white;
+}
+ 
+/* HOVER */
+/* .usergroup-styled-table1 tr:hover {
+  background: var(--primary);
+} */
+/* MODAL */
+.usergroup-form-overlay1 {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.4);
+  backdrop-filter: none;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+ 
+.usergroup-form-modal1 {
+  width: 520px;
+  background: var(--bg-card);
+  padding: 25px;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+}
+ 
+/* TITLE */
+.usergroup-form-title1 {
+  text-align: center;
+  margin-bottom: 20px;
+}
+ 
+/* FORM GRID */
+.usergroup-form-left1 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+ 
+/* LABEL */
+.usergroup-form-left1 label1 {
+  display: flex;
+  flex-direction: column;
+  font-size: 13px;
+}
+ 
+/* INPUT */
+ 
+.usergroup-form-left1 label {
+  display: flex;
+  align-items: center;   /* vertical alignment */
+  gap: 10px;             /* space between label text & input */
+}
+ 
+.usergroup-form-left1 input[type="text"],
+.usergroup-form-left1 input[type="number"] {
+  margin: 0;             /* ❌ remove margin-top & margin-left */
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+ 
+}
+#ug-id {
+  margin-left: 20px;   /* 👈 adjust value (10–20px as needed) */
+}
+/* CHECKBOX */
+#ug-active1 {
+  margin-top: 10px;
+  align-self: flex-start;
+}
+ 
+/* BUTTONS */
+.usergroup-button-box1 {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  margin-top: 20px;
+}
+ 
+.usergroup-save-btn1 {
+  background: var(--bg-muted);
+  color: white;
+  padding: 8px 18px;
+  border: none;
+  border-radius: 6px;
+}
+ 
+.usergroup-delete-btn1 {
+  background: var(--bg-muted);
+  color: white;
+  padding: 8px 18px;
+  border: none;
+  border-radius: 6px;
+}
+ 
+.usergroup-cancel-btn1 {
+  background: var(--bg-muted);
+  color: white;
+  padding: 8px 18px;
+  border: none;
+  border-radius: 6px;
+}
+ 
+ 
+ 

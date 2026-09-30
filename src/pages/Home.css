@@ -1,0 +1,234 @@
+/* =========================================
+   ENTERPRISE DASHBOARD WRAPPER
+========================================= */
+.ent-dashboard {
+  min-height: calc(100vh - 56px);
+  background: var(--bg-main);
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* =========================================
+   COMPACT HEADER
+========================================= */
+.ent-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.ent-header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ent-page-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+  letter-spacing: -0.3px;
+}
+
+.ent-breadcrumbs {
+  font-size: 13px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+}
+
+.ent-separator {
+  color: var(--border-strong);
+  font-size: 11px;
+}
+
+.ent-current {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.ent-date {
+  color: var(--text-muted);
+}
+
+/* ── Outline Action Button ── */
+.btn-outline {
+  background: transparent !important;
+  color: var(--text-secondary) !important;
+  border: 1px solid var(--border-strong) !important;
+  padding: 8px 16px !important;
+  border-radius: var(--radius-sm) !important;
+  font-weight: 600 !important;
+  font-size: 13px !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  box-shadow: var(--shadow-sm) !important;
+}
+
+.btn-outline:hover {
+  background: var(--bg-card) !important;
+  color: var(--primary) !important;
+  border-color: var(--primary) !important;
+}
+
+/* =========================================
+   SECTIONS & GRID
+========================================= */
+.ent-section {
+  display: flex;
+  flex-direction: column;
+}
+
+.ent-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+/* =========================================
+   ENTERPRISE KPI CARD
+========================================= */
+.ent-kpi-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--card-accent, var(--primary)); /* Subtle top accent */
+  border-radius: var(--radius-md);
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: var(--shadow-sm);
+  position: relative;
+  opacity: 0;
+}
+
+.ent-kpi-card.animate-fade-up {
+  animation: fade-up 0.4s ease forwards;
+}
+
+.ent-kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--border-strong);
+}
+
+/* ── Card Header ── */
+.ent-kpi-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.ent-kpi-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0;
+}
+
+.ent-kpi-icon-wrap {
+  font-size: 16px;
+  opacity: 0.8;
+  display: flex;
+  align-items: center;
+}
+
+/* ── Card Body ── */
+.ent-kpi-body {
+  display: flex;
+  align-items: baseline;
+}
+
+.ent-kpi-value-wrap {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.ent-kpi-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.5px;
+  line-height: 1;
+}
+
+.ent-kpi-unit {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+/* ── Card Footer ── */
+.ent-kpi-footer {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.ent-stat-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 0;
+  color: var(--text-muted);
+}
+
+.ent-stat-icon {
+  font-size: 10px;
+}
+
+.ent-stat-pill.success {
+  color: var(--success);
+}
+
+/* ── Skeleton ── */
+.ent-loading-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.ent-kpi-skeleton {
+  height: 110px;
+  background: linear-gradient(90deg, var(--bg-muted) 25%, var(--border) 50%, var(--bg-muted) 75%);
+  background-size: 200% 100%;
+  border-radius: var(--radius-md);
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* =========================================
+   RESPONSIVE
+========================================= */
+@media (max-width: 1200px) {
+  .ent-kpi-grid { grid-template-columns: repeat(2, 1fr); }
+  .ent-loading-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 768px) {
+  .ent-header { flex-direction: column; align-items: flex-start; }
+  .ent-kpi-grid { grid-template-columns: 1fr; }
+  .ent-loading-grid { grid-template-columns: 1fr; }
+}

@@ -1,0 +1,483 @@
+/* =========================================
+   SMART TABLE — WRAPPER
+========================================= */
+.st-wrapper {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+/* =========================================
+   TOOLBAR
+========================================= */
+.st-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-card);
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.st-toolbar-left,
+.st-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* ── Search ── */
+.st-search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.st-search-icon {
+  position: absolute;
+  left: 12px;
+  color: var(--text-muted);
+  font-size: 13px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.st-search-input {
+  width: 260px !important;
+  padding: 9px 36px 9px 34px !important;
+  border: 1.5px solid var(--border) !important;
+  border-radius: var(--radius-md) !important;
+  background: var(--bg-input) !important;
+  color: var(--text-primary) !important;
+  font-size: 13px !important;
+  transition: all 0.2s ease !important;
+  outline: none !important;
+}
+
+.st-search-input:focus {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px var(--primary-light) !important;
+  background: var(--bg-card) !important;
+  width: 300px !important;
+}
+
+.st-clear-btn {
+  position: absolute !important;
+  right: 8px !important;
+  background: none !important;
+  border: none !important;
+  color: var(--text-muted) !important;
+  cursor: pointer !important;
+  padding: 4px !important;
+  border-radius: 4px !important;
+  box-shadow: none !important;
+  font-size: 11px !important;
+  display: flex !important;
+  align-items: center !important;
+}
+.st-clear-btn:hover {
+  color: var(--danger) !important;
+  background: var(--danger-bg) !important;
+  transform: none !important;
+}
+
+/* ── Filter button ── */
+.st-filter-btn {
+  background: var(--bg-muted) !important;
+  color: var(--text-secondary) !important;
+  border: 1.5px solid var(--border) !important;
+  padding: 8px 14px !important;
+  border-radius: var(--radius-md) !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  box-shadow: none !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  position: relative !important;
+}
+
+.st-filter-btn:hover,
+.st-filter-btn.active {
+  background: var(--primary-light) !important;
+  color: var(--primary) !important;
+  border-color: var(--primary-border) !important;
+  transform: none !important;
+}
+
+.st-filter-count {
+  background: var(--primary);
+  color: white;
+  border-radius: 99px;
+  padding: 1px 6px;
+  font-size: 10px;
+  font-weight: 800;
+  min-width: 18px;
+  text-align: center;
+}
+
+/* ── Clear all ── */
+.st-clear-all-btn {
+  background: var(--danger-bg) !important;
+  color: var(--danger) !important;
+  border: 1.5px solid var(--danger-border) !important;
+  padding: 8px 12px !important;
+  border-radius: var(--radius-md) !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  box-shadow: none !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+}
+.st-clear-all-btn:hover {
+  background: var(--danger) !important;
+  color: white !important;
+  transform: none !important;
+}
+
+/* ── Record count ── */
+.st-record-count {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  padding: 6px 12px;
+  background: var(--bg-muted);
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border);
+}
+
+/* ── Export group ── */
+.st-export-group {
+  display: flex;
+  gap: 6px;
+}
+
+.st-export-btn {
+  padding: 8px 12px !important;
+  border-radius: var(--radius-sm) !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  box-shadow: none !important;
+  border: 1.5px solid !important;
+}
+
+.st-export-btn.csv {
+  background: var(--info-bg) !important;
+  color: var(--info) !important;
+  border-color: var(--info-border) !important;
+}
+.st-export-btn.csv:hover {
+  background: var(--info) !important;
+  color: white !important;
+  transform: translateY(-1px) !important;
+}
+
+.st-export-btn.excel {
+  background: var(--success-bg) !important;
+  color: var(--success) !important;
+  border-color: var(--success-border) !important;
+}
+.st-export-btn.excel:hover {
+  background: var(--success) !important;
+  color: white !important;
+  transform: translateY(-1px) !important;
+}
+
+.st-export-btn.print {
+  background: var(--bg-muted) !important;
+  color: var(--text-secondary) !important;
+  border-color: var(--border) !important;
+}
+.st-export-btn.print:hover {
+  background: var(--text-secondary) !important;
+  color: white !important;
+  transform: translateY(-1px) !important;
+}
+
+/* =========================================
+   FILTERS ROW
+========================================= */
+.st-filters-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  padding: 12px 16px;
+  background: var(--bg-muted);
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+  animation: fade-up 0.2s ease;
+}
+
+.st-filter-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 150px;
+}
+
+.st-filter-field label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  margin-bottom: 0;
+}
+
+.st-filter-field select {
+  padding: 7px 32px 7px 10px !important;
+  font-size: 13px !important;
+  height: 36px;
+}
+
+/* =========================================
+   TABLE
+========================================= */
+.st-table-scroll {
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: 600px;
+}
+
+.st-table-scroll::-webkit-scrollbar { height: 5px; width: 5px; }
+.st-table-scroll::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 99px; }
+
+.st-table {
+  width: 100% !important;
+  border-collapse: collapse !important;
+  background: var(--bg-card) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+
+/* ── Table header ── */
+.st-table thead tr th {
+  background: var(--primary) !important;
+  color: #fff !important;
+  font-size: 11.5px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.6px !important;
+  padding: 13px 16px !important;
+  border-bottom: none !important;
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 10 !important;
+  white-space: nowrap !important;
+}
+
+.st-th-inner {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ── Sort button ── */
+.st-sort-btn {
+  background: none !important;
+  border: none !important;
+  color: rgba(255,255,255,0.65) !important;
+  cursor: pointer !important;
+  padding: 2px !important;
+  font-size: 11px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  box-shadow: none !important;
+  transition: color 0.15s ease !important;
+  flex-shrink: 0;
+}
+.st-sort-btn:hover {
+  color: #fff !important;
+  transform: none !important;
+  background: rgba(255,255,255,0.15) !important;
+  border-radius: 3px !important;
+}
+
+/* ── Rows ── */
+.st-table td {
+  padding: 11px 16px !important;
+  border-bottom: 1px solid var(--border) !important;
+  font-size: 13.5px !important;
+  color: var(--text-primary) !important;
+  font-weight: 500 !important;
+  vertical-align: middle !important;
+  transition: background 0.12s ease !important;
+}
+
+.st-table tr:hover td {
+  background: var(--primary-light) !important;
+}
+
+.st-table tr:nth-child(even) td {
+  background: rgba(0,0,0,0.018) !important;
+}
+.st-table tr:nth-child(even):hover td {
+  background: var(--primary-light) !important;
+}
+
+.st-table tr:last-child td {
+  border-bottom: none !important;
+}
+
+/* ── Actions column ── */
+.st-actions-col {
+  width: 160px !important;
+  text-align: center !important;
+}
+
+.st-actions-cell {
+  text-align: center !important;
+}
+
+.st-actions-cell .btn-edit,
+.st-actions-cell .btn-delete {
+  margin: 2px !important;
+}
+
+/* ── States ── */
+.st-loading, .st-empty {
+  text-align: center !important;
+  padding: 48px 24px !important;
+  color: var(--text-muted) !important;
+}
+
+.st-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.st-empty-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.st-empty-icon {
+  font-size: 28px;
+  color: var(--border-strong);
+}
+
+.st-empty-inner p {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+/* =========================================
+   PAGINATION
+========================================= */
+.st-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
+  background: var(--bg-card);
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.st-page-size {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.st-page-size label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: none;
+  letter-spacing: 0;
+  margin: 0;
+}
+
+.st-page-size select {
+  width: auto !important;
+  padding: 6px 28px 6px 10px !important;
+  font-size: 13px !important;
+  height: 34px;
+  min-width: 70px;
+}
+
+.st-page-info {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.st-page-controls {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.st-page-btn {
+  background: var(--bg-muted) !important;
+  color: var(--text-secondary) !important;
+  border: 1.5px solid var(--border) !important;
+  padding: 6px 10px !important;
+  border-radius: var(--radius-sm) !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+  min-width: 34px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-shadow: none !important;
+}
+
+.st-page-btn:hover:not(:disabled) {
+  background: var(--primary-light) !important;
+  color: var(--primary) !important;
+  border-color: var(--primary-border) !important;
+  transform: none !important;
+}
+
+.st-page-btn.active {
+  background: var(--primary) !important;
+  color: #fff !important;
+  border-color: var(--primary) !important;
+  box-shadow: var(--shadow-primary) !important;
+}
+
+.st-page-btn:disabled {
+  opacity: 0.4 !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+}
+
+/* =========================================
+   RESPONSIVE
+========================================= */
+@media (max-width: 768px) {
+  .st-search-input { width: 100% !important; }
+  .st-toolbar { flex-direction: column; align-items: stretch; }
+  .st-toolbar-left, .st-toolbar-right { justify-content: flex-start; }
+  .st-pagination { flex-direction: column; align-items: flex-start; }
+  .st-export-group { flex-wrap: wrap; }
+}

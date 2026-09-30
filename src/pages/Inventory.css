@@ -1,0 +1,113 @@
+.inventory-container {
+ position: relative;
+   top: 0;
+}
+
+.inventory-title {
+  text-align: left;
+   margin: 0; 
+}
+.inventory-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.in-new-btn {
+  float: right;
+  padding: 8px 14px;
+ background: var(--primary-dark);
+  color: white;
+  border: none;
+  cursor: pointer;
+  margin-bottom: 10px;
+}
+
+.inventory-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.inventory-table th {
+  background: var(--bg-muted);
+  color: white;
+  padding: 10px;
+  border: 1px solid var(--border); 
+}
+
+.inventory-table td {
+  padding: 10px;
+  border: 1px solid var(--border);
+  border: 1px solid var(--border); 
+}
+
+/* Modal */
+
+.modal-overlay-in {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.modal-box-in {
+  background: var(--bg-card);
+  width: 700px;
+  padding: 25px;
+  border-radius: 8px;
+}
+
+.form-grid {
+   margin-top: 20px; 
+  row-gap: 0px !important;
+  column-gap: 8px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  /* gap: 3px; */
+  margin-bottom: 15px;
+}
+
+.form-grid input {
+  padding: 8px;
+}
+
+.checkbox-group {
+  display: flex;
+  gap: 30px;
+  margin-bottom: 20px;
+}
+
+.modal-buttons-in {
+  text-align: right;
+}
+
+.save-btn-in {
+  background: green;
+  color: white;
+  padding: 8px 12px;
+  border: none;
+  margin-right: 10px;
+}
+
+.cancel-btn-in {
+  background: red;
+  color: white;
+  padding: 8px 12px;
+  border: none;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.form-group label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #666;
+}

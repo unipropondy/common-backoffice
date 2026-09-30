@@ -1,0 +1,117 @@
+.trans-container {
+  padding: 15px;
+  font-family: Arial;
+}
+
+.trans-title {
+  font-size: 18px;
+  margin-bottom: 10px;
+}
+
+/* HEADER */
+.trans-header-box {
+  background: #f9fafb; 
+  padding: 10px;
+  margin-bottom: 10px;
+  /* background: var(--primary); */
+}
+
+.trans-header-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.trans-header-row label {
+  width: 90px;
+  font-size: 13px;
+}
+
+.trans-box {
+  /* background: var(--primary); */
+  border: 1px solid var(--border);
+  height: 24px;
+  padding: 2px 5px;
+}
+
+.trans-long {
+  width: 250px;
+}
+
+.trans-small {
+  width: 40px;
+  text-align: center;
+}
+
+.trans-small-btn {
+  height: 24px;
+  width: 24px;
+  cursor: pointer;
+}
+.trans-right {
+  margin-left: auto;
+}
+
+/* TOOLBAR */
+.trans-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.trans-add-top-btn {
+  background: var(--bg-muted);
+  color: white;
+  border: none;
+  padding: 6px 14px;
+}
+
+.trans-save-top-btn {
+  background: var(--bg-muted);
+  color: white;
+  border: none;
+  padding: 6px 16px;
+}
+
+/* TABLE */
+.trans-grid-box {
+  border: 1px solid var(--border);
+}
+
+.trans-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.trans-table th {
+  background: var(--bg-muted);
+  color: white;
+  padding: 6px;
+  font-size: 12px;
+  border: 1px solid var(--border);
+}
+
+.trans-table td {
+  padding: 5px;
+  font-size: 12px;
+  border: 1px solid var(--border);
+}
+
+/* ENTRY ROW */
+.trans-entry-row input {
+  width: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+}
+
+/* SMALL ADD BUTTON */
+.trans-small-add {
+  background: green;
+  color: white;
+  border: none;
+  padding: 2px 6px;
+  cursor: pointer;
+}

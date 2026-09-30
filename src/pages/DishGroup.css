@@ -1,0 +1,599 @@
+/* PAGE */
+
+.dg-page{
+  width:100%;
+padding: -100px 100px;
+box-sizing:border-box;
+/* padding:20px; */
+/* font-family: 'Inter', -apple-system, sans-serif; */
+}
+
+.dg-title{
+font-size:20px;
+margin-bottom:10px;
+}
+
+.dg-btn-right{
+display:flex;
+justify-content:flex-end;
+margin-bottom:15px;
+}
+
+.dg-new-btn{
+background: var(--primary-dark);
+color:white;
+border:none;
+padding:8px 18px;
+border-radius:6px;
+cursor:pointer;
+}
+
+
+/* MODAL */
+
+.dg-modal-overlay{
+position:fixed;
+top:0;
+left:0;
+width:100%;
+height:100%;
+background:rgba(0,0,0,0.5);
+display:flex;
+justify-content:center;
+align-items:center;
+z-index:1000;
+}
+
+.dg-modal{
+background: var(--bg-card);
+width:1000px; 
+max-width:95%; 
+padding:25px;
+border-radius:10px;
+max-height:90vh;
+overflow-y:auto;
+}
+
+
+/* MAIN LAYOUT */
+
+.dg-layout{
+  display:block;   /* 🔥 IMPORTANT FIX */
+  margin-top:20px;
+}
+
+/* LEFT PANEL */
+
+.dg-left{
+width:100%;
+}
+
+.dg-tabs-section{
+  margin-top:20px;
+}
+
+
+/* INPUT GRID */
+
+.dg-input-grid{
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);  /* 🔥 3 columns */
+  gap: 8px 10px;
+}
+
+.dg-input-grid input{
+  width: 100%;
+  height: 45px;
+  padding: 10px;
+  border-radius: 10px;
+}
+
+
+/* CHECKBOX */
+
+.dg-checkbox-grid{
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px 40px;
+}
+
+
+/* RIGHT PANEL */
+
+.dg-right{
+width:45%;
+display:flex;
+flex-direction:column;
+gap:15px;
+border-left:1px solid #ccc;   /* center line */
+padding-left:30px;            /* space after line */
+}
+
+
+/* TABS */
+
+.dg-tab-header{
+display:flex;
+gap:10px;
+margin-bottom:10px;
+}
+
+.dg-tab{
+background: var(--primary);
+padding:7px 15px;
+border-radius:6px;
+cursor:pointer;
+font-weight:600;
+}
+
+.dg-active{
+background: var(--primary);
+color: white;
+}
+
+
+/* TOP ROW */
+
+.dg-top-row{
+display:flex;
+gap:25px;
+}
+
+
+/* IMAGE */
+
+.dg-image{
+display:flex;
+flex-direction:column;
+gap:8px;
+}
+
+.dg-image-box{
+width:120px;
+height:120px;
+border: 1px solid var(--border);
+display:flex;
+align-items:center;
+justify-content:center;
+background: var(--primary);
+}
+
+.dg-image-box img{
+width:100%;
+height:100%;
+object-fit:cover;
+}
+
+.dg-image-btn{
+display:flex;
+gap:8px;
+}
+
+.dg-image-btn button{
+padding:5px 10px;
+border:none;
+background: var(--primary);
+color: white;
+border-radius:4px;
+cursor:pointer;
+}
+
+
+/* PREVIEW */
+
+.dg-preview{
+display:flex;
+flex-direction:column;
+gap:8px;
+}
+
+.dg-preview-box {
+  position: relative;
+  width: 150px;      /* 👈 fix size */
+  height: 150px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+/* 🔥 VERY IMPORTANT */
+.dg-preview-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;   /* 👈 prevents stretch */
+}
+.dg-preview-text {
+  position: absolute;
+  bottom: 10px;      /* 👈 bottom la */
+  left: 50%;
+  transform: translateX(-50%);
+
+  padding: 6px 12px;
+  border-radius: 8px;
+
+  font-size: 14px;
+  white-space: nowrap;
+
+  background: var(--bg-muted);
+  color: #fff;
+}
+
+
+/* BUTTON COLOR */
+
+.dg-button-color{
+display:flex;
+flex-direction:column;
+gap:8px;
+}
+
+.dg-button-preview{
+padding:10px;
+border-radius:6px;
+text-align:center;
+font-weight:bold;
+}
+
+.dg-color-btn{
+display:flex;
+gap:8px;
+}
+
+.dg-color-btn button{
+padding:5px 10px;
+border:none;
+background: var(--primary);
+color: white;
+border-radius:4px;
+cursor:pointer;
+}
+
+.dg-hidden{
+opacity:0;
+position:absolute;
+pointer-events:none;
+}
+
+
+/* APPLY BUTTON */
+
+.dg-apply{
+margin-top:5px;
+padding:6px 12px;
+border:none;
+background: var(--primary);
+color: white;
+border-radius:4px;
+cursor:pointer;
+}
+
+.dg-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  
+}
+
+.dg-header-right {
+  display: flex;
+  align-items: center;
+  /* gap: 10px; */
+}
+
+.dg-dropdown {
+   padding: 6px 14px;
+  /* min-width: 70px; */
+  border-radius: 5px;
+  border: 1px solid var(--border);
+}
+
+/* SAVE CANCEL */
+
+.dg-modal-buttons{
+/* display:flex;
+justify-content:flex-end;
+gap:10px;
+margin-top:20px; */
+position:absolute;
+top:90px;
+right:200px;
+display:flex;
+gap:10px;
+}
+
+.dg-save{
+/* background: var(--primary);
+color: white;
+border:none;
+padding:8px 18px;
+border-radius:6px;
+cursor:pointer; */
+padding:8px 16px;
+background: var(--primary);
+color: white;
+border:none;
+border-radius:4px;
+cursor:pointer;
+}
+
+.dg-cancel{
+/* background: var(--primary);
+color: white;
+border:none;
+padding:8px 18px;
+border-radius:6px;
+cursor:pointer; */
+padding:8px 16px;
+background: var(--primary);
+color: white;
+border:none;
+border-radius:4px;
+cursor:pointer;
+}
+
+
+/* TABLE */
+
+.dg-table{
+width:100%;
+border-collapse:collapse;
+margin-top:5px;
+}
+
+.dg-table th{
+background: var(--primary);
+border: 1px solid var(--border);
+color:white;
+padding:12px;
+text-align:center;
+border-right: 1px solid var(--border);
+border-top: 1px solid var(--border);
+border-bottom: 1px solid var(--border);
+white-space:nowrap; /* single line */
+font-size:14px;     /* small header text */
+position: relative; /* added for absolute input */
+}
+
+.dg-table th input {
+  display: block;
+  margin: 5px auto 0 auto;
+  width: 90%;
+  padding: 6px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  color: #000;
+  box-sizing: border-box;
+  outline: none;
+}
+
+.dg-table th input.dg-filter-checkbox {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border: 2px solid #edb48e;
+  text-align: center;
+  font-weight: bold;
+  font-size: 16px;
+  color: #4a6b8c;
+  background-color: #fdfbf7;
+  padding: 0;
+  margin: 5px auto 0 auto;
+}
+
+/* Dish Group Code */
+.dg-table th:nth-child(2),
+.dg-table td:nth-child(2){
+    width:180px;
+}
+
+/* Category Name */
+.dg-table th:nth-child(3),
+.dg-table td:nth-child(3){
+    width:180px;
+}
+
+/* Dish Group Name */
+.dg-table th:nth-child(4),
+.dg-table td:nth-child(4){
+    width:180px;
+}
+
+/* Kitchen Print */
+.dg-table th:nth-child(6),
+.dg-table td:nth-child(6){
+    width:160px;
+}
+
+/* Kitchen Sort Code */
+.dg-table th:nth-child(9),
+.dg-table td:nth-child(9){
+    width:180px;
+}
+
+
+
+.dg-table th:last-child{
+border-right:none;
+}
+
+/* Body */
+
+.dg-table td{
+  padding:4px 6px;   /* 🔥 reduce gap */
+  text-align:left;
+  border: 1px solid var(--border); 
+  line-height:16px;  /* 🔥 compact */
+}
+
+.dg-table th{
+background: var(--primary);
+color: white;
+padding:6px 6px;   /* 🔥 reduce header height */
+  font-size:13px;
+}
+
+.dg-table-wrapper{
+width:100%;
+overflow-x:auto;   /* horizontal scroll */
+}
+
+/* optional smooth scroll */
+
+.dg-table-wrapper::-webkit-scrollbar{
+height:8px;
+}
+
+.dg-table-wrapper::-webkit-scrollbar-thumb{
+background: var(--primary);
+border-radius:4px;
+}
+
+.dg-table-wrapper::-webkit-scrollbar-thumb:hover{
+background: var(--primary);
+}
+
+.dg-field{
+display:flex;
+flex-direction:column;
+gap:4px;
+}
+
+.dg-field label{
+font-size:13px;
+color:#555;
+font-weight:500;
+}
+
+.dg-category-row{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dg-category-row input{
+flex:1;
+height:38px;
+padding:6px 10px;
+border: 1px solid var(--border);
+border-radius:6px;
+outline:none;
+}
+
+.dg-category-row input:focus{
+border: 2px solid var(--primary);   /* nice focus color */
+}
+.dg-category-row button {
+  width: 60px;                 /* 🔥 size increase */
+  height: 42px;                /* 🔥 same as input height */
+  border-radius: 12px;         /* 🔥 smooth rounded */
+  border: none;
+
+  background: #ff6a00;         /* 🟧 ORANGE */
+  color: white;
+  font-size: 20px;
+  font-weight: bold;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  cursor: pointer;
+  margin-top: 17px;
+
+  box-shadow: 0 4px 10px rgba(255,106,0,0.3); /* 🔥 glow */
+}
+
+.modifier-grid {
+ display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 5px 5px;
+  max-height: 300px;
+  overflow: auto;
+  padding: 10px;
+}
+
+/* REMOVE BOX STYLE */
+.modifier-grid label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  background: transparent;   /* important */
+  border: none;              /* important */
+  padding: 0;                /* important */
+}
+
+/* optional small hover */
+.modifier-grid label:hover {
+  color: #2e7d32;
+}
+
+.kitchen-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));  /* 🔥 BEST FIX */
+  gap: 12px 20px;
+
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  background: transparent;
+}
+.kitchen-list1 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.kitchen-list1 input {
+  margin: 0;
+}
+
+.popup {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.3);
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  z-index: 9999;
+}
+
+.popup-box {
+  background: var(--primary);
+  padding: 20px;
+  width: 280px;
+  border-radius: 6px;
+}
+
+.popup-item {
+  padding: 8px;
+  cursor: pointer;
+}
+
+.popup-item:hover {
+  background: var(--primary);
+}
+
+.btn-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid white;
+  border-top: 2px solid transparent;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 5px;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

@@ -1,0 +1,207 @@
+.rp-page1 {
+  padding-top: 0 !important;
+  margin-top: 0 !important;
+}
+ 
+/* MAIN BOX */
+.rp-mainBox1 {
+  width: 900px;        /* 🔥 fixed width */
+  margin: 20px auto;   /* center */
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 20px;
+}
+ 
+/* TITLE */
+.rp-title1 {
+  text-align: center;
+  margin-bottom: 20px;
+  font-size: 22px;
+}
+ 
+/* GRID */
+.rp-formGrid1 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 40px;
+}
+ 
+/* ROW */
+.rp-row1 {
+  display: flex;
+  align-items: center;
+}
+ 
+.rp-row1 label {
+  width: 130px;
+  font-size: 13px;
+}
+ 
+.rp-row1 input {
+  width: 150px;
+  height: 25px;
+}
+ 
+/* TABLE */
+.rp-tableBox1 {
+  margin-top: 15px;
+  border: 1px solid var(--border);
+}
+ 
+.rp-table1 {
+  width: 100%;
+  border-collapse: collapse;
+}
+ 
+.rp-table1 th {
+  background: var(--bg-muted);
+  color: white;
+}
+ 
+.rp-table1 th,
+.rp-table1 td {
+  border: 1px solid var(--border);
+  padding: 5px;
+  font-size: 12px;
+}
+ 
+/* INLINE EDIT INPUT */
+.rp-table1 td input {
+  width: 100%;
+  height: 22px;
+  border: 1px solid var(--border);
+  font-size: 12px;
+}
+ 
+/* NO DATA */
+.rp-noData1 {
+  text-align: center;
+  padding: 10px;
+  color: #555;
+}
+ 
+/* BUTTONS */
+.rp-btns1 {
+  text-align: center;
+  margin-top: 15px;
+}
+ 
+.rp-btn1 {
+  background: #ff6a00;
+  color: white;
+
+  height: 32px;          /* 🔥 reduce height */
+  min-width: 30px;       /* 🔥 smaller width */
+
+  padding: 0 12px;       /* 🔥 less padding */
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 8px;    /* slightly smaller curve */
+  border: none;
+
+  font-size: 13px;       /* 🔥 small text */
+  font-weight: 500;
+
+  cursor: pointer;
+}
+ 
+.rp-btn1.new1 { background: var(--primary); color: white;}
+.rp-btn1.save1 { background: green; }
+.rp-btn1.clear1 { background: red; }
+.rp-btn1.exit1 { background: brown; }
+ 
+/* NOTIFICATION */
+.rp-topMsg1 {
+  position: fixed;
+  top: 90px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-muted);
+  color: #155724;
+  padding: 8px 18px;
+  border-radius: 6px;
+  font-size: 13px;
+}
+ 
+/* 🔥 ADD THIS ONLY (no other changes) */
+.rp-mainBox1 {
+  position: relative;   
+}
+ 
+/* 🔥 UPDATE BUTTON POSITION */
+.rp-btns1 {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+ 
+  display: flex;
+  gap: 10px;
+ 
+  text-align: unset;   /* remove center */
+  margin-top: 0;       /* remove bottom spacing */
+}
+ 
+/* MODAL OVERLAY FIX */
+.rp-modalOverlay1 {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.4);
+ 
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+ 
+  padding-left: 150px; /* 🔥 adjust here */
+}
+ 
+/* TOP BAR */
+.rp-topBar1 {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 10px;
+}
+ 
+/* DATE INPUT */
+.rp-input1 {
+  width: 150px;
+  height: 25px;
+}
+ 
+.rp-tableBox1 {
+  margin-top: 15px;
+  border: 1px solid var(--border);   /* softer outer border */
+}
+ 
+.rp-table1 th,
+.rp-table1 td {
+  border: 1px solid var(--border);   /* medium visibility */
+  padding: 8px;
+  font-size: 14px;
+}
+ 
+/* HEADER ROW */
+.rp-header1 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* REMOVE OLD ABSOLUTE */
+/* .rp-btns1 {
+  position: static;   
+  display: flex;
+  gap: 10px;
+  margin: 0;
+} */
+
+/* TITLE */
+.rp-title1 {
+  margin: 0;   /* remove bottom gap */
+}

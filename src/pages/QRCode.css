@@ -1,0 +1,198 @@
+
+body{
+  font-family:Arial, sans-serif;
+  background:#f5f5f5;
+}
+
+/* ========================= */
+/* PAGE */
+/* ========================= */
+
+.qr-table-master-container{
+  padding:-10px;
+}
+
+/* Header */
+
+.qr-header-section{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:20px;
+}
+
+.qr-title{
+  font-size:28px;
+}
+
+/* ========================= */
+/* BUTTON */
+/* ========================= */
+
+.qr-new-btn,
+.qr-btn,
+.save-btn{
+
+  border:none;
+  color:white;
+  padding:10px 18px;
+  border-radius:5px;
+  cursor:pointer;
+
+}
+
+.qr-new-btn{
+  background:green;
+}
+
+.qr-btn{
+  background:black;
+}
+
+.qr-save-btn{
+ background:blue;
+  margin-top:20px;
+  padding:10px 25px;
+  float:right;
+}
+
+.qr-new-btn:hover,
+.qr-btn:hover,
+.qr-save-btn:hover{
+  opacity:0.8;
+}
+
+/* ========================= */
+/* TABLE */
+/* ========================= */
+
+.qr-table-master-table{
+  width:100%;
+  border-collapse:collapse;
+  background:white;
+  }
+
+.qr-table-master-table th{
+  background:black;
+  color:white;
+  padding:15px;
+  text-align:center;
+}
+
+
+.qr-table-master-table td{
+  border:1px solid #ddd;
+  padding:15px;
+  text-align:left;
+}
+
+/* ========================= */
+/* MODAL */
+/* ========================= */
+
+.qr-modal-overlay{
+  position:fixed;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+  background:rgba(0,0,0,0.5);
+
+  display:flex;
+  justify-content:center;
+  align-items:center;
+}
+
+/* Modal */
+
+.qr-modal-box{
+  background:white;
+  width:400px;
+  padding:25px;
+  border-radius:10px;
+  text-align:center;
+  position:relative;
+}
+
+/* Close Button */
+
+.qr-close-btn{
+
+  position:absolute;
+  top:10px;
+  right:10px;
+
+  width:35px;
+  height:35px;
+
+  border:none;
+  border-radius:50%;
+
+  background:red;
+  color:white;
+
+  font-size:20px;
+  cursor:pointer;
+}
+
+/* Modal Title */
+
+.qr-modal-title{
+  margin-bottom:20px;
+}
+
+/* QR */
+
+.qr-container{
+  background:white;
+  padding:15px;
+  display:inline-block;
+}
+
+/* URL */
+
+.qr-url{
+  margin-top:20px;
+  word-break:break-word;
+  font-size:14px;
+  color:#555;
+}
+
+/* Input */
+
+.qr-table-input{
+  width:100%;
+  padding:12px;
+  border:1px solid #ccc;
+  border-radius:5px;
+  margin-bottom:15px;
+  box-sizing:border-box;
+}
+
+.qr-label{
+  display:block;
+  text-align:left;
+  margin-bottom:6px;
+  font-weight:600;
+  font-size:14px;
+}
+
+.qr-delete-btn{
+  background:red;
+  color:white;
+  border:none;
+  padding:10px 18px;
+  border-radius:5px;
+  cursor:pointer;
+}
+
+.qr-delete-btn:hover{
+  opacity:0.8;
+}
+
+.qr-edit-link{
+  color:blue;
+  cursor:pointer;
+  text-decoration:underline;
+  font-weight:600;
+}

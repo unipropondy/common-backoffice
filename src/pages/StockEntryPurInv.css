@@ -1,0 +1,190 @@
+/* 🔥 Main Container */
+.inv_trans-container {
+  padding: 20px;
+  background: #f9fafb;
+  min-height: 100vh;
+  font-family: "Segoe UI", sans-serif;
+}
+
+/* 🔥 Title */
+.inv_trans-title {
+  font-size: 22px;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 15px;
+}
+
+/* 🔥 Header Box */
+.inv_trans-header-box {
+  background: #ffffff;
+  border-radius: 10px;
+  padding: 15px;
+  margin-bottom: 15px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+}
+
+/* 🔥 Header Row */
+.inv_trans-header-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.inv_trans-header-row label {
+  font-size: 13px;
+  color: #374151;
+  font-weight: 500;
+}
+
+/* 🔥 Inputs */
+.inv_trans-box {
+  padding: 6px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  outline: none;
+  font-size: 13px;
+  transition: 0.2s;
+}
+
+.inv_trans-box:focus {
+  border-color: #f97316;
+  box-shadow: 0 0 0 1px #f97316;
+}
+
+.inv_trans-long {
+  width: 200px;
+}
+
+.inv_trans-small {
+  width: 50px;
+  text-align: center;
+}
+
+/* 🔥 Toolbar */
+.inv_trans-toolbar {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+/* 🔥 Buttons */
+.inv_trans-add-btn {
+  background: #10b981;
+  color: white;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.inv_trans-add-btn:hover {
+  background: #059669;
+}
+
+.inv_trans-save-btn {
+  background: #2563eb;
+  color: white;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.inv_trans-save-btn:hover {
+  background: #1d4ed8;
+}
+
+.inv_trans-exit-btn {
+  background: #ef4444;
+  color: white;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.inv_trans-exit-btn:hover {
+  background: #dc2626;
+}
+
+/* 🔥 Table Box */
+.inv_trans-grid-box {
+  background: #ffffff;
+  border-radius: 10px;
+  padding: 10px;
+  overflow-x: auto;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+}
+
+/* 🔥 Table */
+.inv_trans-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+/* Header */
+.inv_trans-table thead {
+  background: #f3f4f6;
+}
+
+.inv_trans-table th {
+  padding: 10px;
+  text-align: left;
+  font-weight: 600;
+  color: #374151;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+/* Body */
+.inv_trans-table td {
+  padding: 8px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+/* 🔥 Input inside table */
+.inv_trans-table input {
+  width: 100%;
+  padding: 5px;
+  border: 1px solid #d1d5db;
+  border-radius: 5px;
+  font-size: 12px;
+}
+
+.inv_trans-table input:focus {
+  border-color: #f97316;
+  outline: none;
+}
+
+/* 🔥 Empty row */
+.inv_trans-table td[colspan] {
+  text-align: center;
+  padding: 15px;
+  color: #9ca3af;
+}
+
+/* 🔥 Row Hover */
+.inv_trans-table tbody tr:hover {
+  background: #f9fafb;
+}
+
+/* 🔥 Responsive */
+@media (max-width: 768px) {
+  .inv_trans-header-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .inv_trans-long {
+    width: 100%;
+  }
+
+  .inv_trans-toolbar {
+    flex-direction: column;
+  }
+}

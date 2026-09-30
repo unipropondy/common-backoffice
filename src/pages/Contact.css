@@ -1,0 +1,322 @@
+.kitchen_container {
+  margin: 0;
+  padding: 8px 20px;
+  margin-top: -20px;
+  font-family: 'Inter', -apple-system, sans-serif;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+.required {
+  color: var(--primary);   /* 🔥 oracle theme color */
+  font-weight: bold;
+  margin-left: 3px;
+}
+
+/* SUCCESS POPUP */
+.success-popup {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: #fe6e00;
+  color: white;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-weight: 500;
+  z-index: 9999;
+}
+
+.kitchen_title {
+  margin: 0;
+}
+
+/* HEADER FILTER */
+.active-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  position: relative;
+  width: 100%;
+  padding: 0 10px;
+}
+
+.active-header select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  width: 90px;
+  height: 28px;
+  padding: 0 26px 0 16px;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  color: #1e1e1e;
+  border: 0;
+  border-radius: 12px;
+  background: #f3f0f1;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
+  cursor: pointer;
+  text-align: center;
+  text-align-last: center;
+  background-image: linear-gradient(45deg, transparent 50%, #2d2d2d 50%),
+    linear-gradient(135deg, #2d2d2d 50%, transparent 50%);
+  background-position: calc(100% - 12px) calc(50% - 2px), calc(100% - 8px) calc(50% - 2px);
+  background-size: 5px 5px;
+  background-repeat: no-repeat;
+}
+
+.kitchen_table thead th:nth-child(3) {
+  position: relative;
+}
+
+.kitchen_table thead th:nth-child(3) .g-sort-icon {
+  display: none !important;
+}
+
+.active-header input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+}
+
+/* HEADER */
+.kitchen_header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.kitchen-right-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;        /* 🔥 space between New & dropdown */
+}
+
+.kitchen-btn-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.kitchen-btn-right select {
+  height: 38px;
+  border-radius: 6px;
+}
+
+.kitchen_new_btn {
+  background: var(--primary-dark);
+  color: white;
+  padding: 6px 14px;
+  border: none;
+  /* height: 38px; */
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.kitchen_new_btn:hover {
+  transform: scale(1.05);
+}
+
+/* TABLE */
+.kitchen_table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+/* 🔥 HEADER SMALL */
+.kitchen_table th {
+  background: var(--primary);
+  border: 1px solid var(--border);
+  color: white;
+  padding: 2px 6px !important;
+  height: 22px;
+  text-align: center;
+  font-size: 13px;
+}
+
+/* 🔥 NORMAL STATE */
+.filter-col input {
+  width: 90px;
+  height: 20px;
+  font-size: 12px;
+  padding: 2px 5px;
+  box-sizing: border-box;
+}
+
+/* 🔥 IMPORTANT: prevent expand on click */
+.filter-col input:focus {
+  width: 90px !important;
+  outline: none;
+}
+
+.filter-col input {
+  width: 90px !important;
+  min-width: 90px;
+  max-width: 90px;
+}
+
+.kitchen_table th input {
+  width: 90px;
+  height: 20px;
+  font-size: 12px;
+  padding: 2px 5px;
+  box-sizing: border-box;
+}
+
+.kitchen_field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+input[type="checkbox"] {
+  accent-color: #ff6a00;   /* 🟧 orange */
+}
+.kitchen_field input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  accent-color: #ff6a00;  /* optional color */
+}
+/* 🔥 ROW SMALL (FIXED HERE) */
+.kitchen_table td {
+  border: 1px solid var(--border);
+  padding: 2px 6px !important;   /* 🔥 reduced */
+  text-align: left;
+  font-size: 13px;
+  height: 22px;                  /* 🔥 reduced */
+  line-height: 13px;
+}
+
+/* REMOVE EXTRA HEIGHT */
+.kitchen_table tr {
+  height: auto;
+}
+
+/* CHECKBOX */
+.kitchen_table input[type="checkbox"] {
+  width: 12px;
+  height: 30px;
+  margin: 0;
+}
+
+/* DROPDOWN */
+.kitchen_table th select {
+  width: 80px;
+  height: 40px;
+  padding: 2px 6px;
+  font-size: 12px;
+}
+
+/* MODAL */
+.kitchen_modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.kitchen_modal_box {
+  background: var(--bg-card);
+  padding: 50px;
+  border-radius: 10px;
+  width: 500px;
+}
+
+/* FORM */
+.kitchen_form_grid {
+  display: flex;
+  gap: 15px;
+  margin-top: 10px;
+}
+
+.kitchen_form_grid input,
+.kitchen_form_grid select {
+  flex: 1;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.kitchen_form_grid .kitchen_field input[type="checkbox"] {
+  appearance: none;
+  flex: 0 0 18px;
+  width: 28px;
+  height: 15px;
+  padding: 0;
+  margin-top: -50%;
+  border: 0;
+  border-radius: 6px;
+  align-self: center;
+  background: #f3f0f1;
+  cursor: pointer;
+}
+
+
+.kitchen_form_grid .kitchen_field input[type="checkbox"]:checked {
+  background: #ff6a00;
+}
+
+.kitchen_form_grid .kitchen_field input[type="checkbox"]:checked::after {
+  content: "✓";
+  display: block;
+  color: #fff;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 28px;
+  text-align: center;
+}
+
+/* FOOTER */
+.kitchen_modal_footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+/* BUTTONS */
+.kitchen_save_btn,
+.kitchen_cancel_btn {
+  background: var(--bg-muted);
+  color: white;
+  padding: 8px 15px;
+  border: none;
+  border-radius: 5px;
+}
+
+/* FIELD */
+.kitchen_field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.kitchen_field label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #555;
+}
+
+/* SPINNER */
+.spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid #ddd;
+  border-top: 3px solid var(--primary);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  margin: auto;
+}
+
+@keyframes spin {
+  100% {
+    transform: rotate(360deg);
+  }
+}

@@ -1,0 +1,39 @@
+.list-container {
+  padding: 20px;
+}
+
+.list-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 15px;
+}
+
+.list-header button {
+  background: #ff6a00;
+  color: #fff;
+  border: none;
+  padding: 5px 5px;
+  border-radius: 8px;
+}
+
+.list-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+}
+
+.list-table th {
+  background: #f2eee9;
+  padding: 10px;
+  text-align: left;
+}
+
+.list-table td {
+  padding: 10px;
+  border-bottom: 1px solid #eee;
+}
+
+.list-table tr:hover {
+  background: #faf7f2;
+  cursor: pointer;
+}

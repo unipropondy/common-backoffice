@@ -1,0 +1,381 @@
+/* ================= LAYOUT ================= */
+.mem-main-container {
+  padding: -5px -5px;
+}
+
+.mem-page-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-top: 4px;
+  margin-bottom: 10px;
+}
+
+.mem-header-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin-bottom: 12px;
+}
+
+.mem-header-bar button {
+  margin-left: auto;
+}
+
+/* ================= FORM TABLE ================= */
+.mem-form-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.mem-form-table td {
+  border: none;
+  padding: 1%    !important;
+  vertical-align: middle;
+}
+
+.mem-form-table td:nth-child(1),
+.mem-form-table td:nth-child(3) {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  width: 180px;
+}
+
+.mem-form-table input,
+.mem-form-table select {
+  width: 300px;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--border);
+  font-size: 13px;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  transition: 0.2s;
+  height: 39px;
+  box-sizing: border-box;
+}
+
+.mem-form-table input:focus,
+.mem-form-table select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-light);
+  outline: none;
+  background: var(--bg-card);
+}
+
+.mem-form-table input[type="checkbox"] {
+  width: auto;
+  height: auto;
+  margin-right: 6px;
+  transform: scale(1);
+}
+
+/* ================= TABS CONTAINER ================= */
+.mem-tabs {
+  margin-top: 20px;
+  background: var(--bg-card);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 3px;
+  box-shadow: var(--shadow-sm);
+}
+
+.mem-tab-header {
+  /* display: flex; */
+  gap: 3px;
+  border-bottom: 2px solid var(--border);
+}
+
+.mem-tab-header button {
+  flex: 1;
+  padding: 5px 12px;
+  border: none;
+  background: none;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 13px;
+  border-radius: 8px;
+  transition: all 0.18s ease;
+}
+
+.mem-tab-header button:hover {
+  color: var(--primary);
+  background: var(--primary-light);
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+}
+
+.mem-tab-header button.active {
+  color: var(--primary);
+  border-bottom: 3px solid var(--primary);
+  background: var(--primary-light);
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+}
+
+/* ================= MEAL TABLE ================= */
+.mem-meal-header {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.mem-meal-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.mem-meal-table {
+  width: 100%;
+  margin-top: 10px;
+  border-collapse: collapse;
+}
+
+.mem-meal-table th {
+  background: var(--bg-muted);
+  color: var(--text-secondary);
+  padding: 10px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+  border-bottom: 1.5px solid var(--border);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.mem-meal-table td {
+  padding: 9px 12px;
+  font-size: 13px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+.mem-meal-table input {
+  width: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+}
+
+.mem-meal-table tr:hover {
+  background: rgba(249,115,22,0.03);
+}
+
+.mem-selected-row {
+  background: var(--primary-light) !important;
+}
+
+/* ================= BUTTONS ================= */
+.mem-btn-add,
+.mem-btn-delete,
+.mem-btn-save {
+  border: none;
+  padding:5px 5px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-weight: 200;
+  font-size: 10px;
+  transition: all 0.2s ease;
+}
+
+.mem-btn-add  { background: var(--primary);  color: white; }
+.mem-btn-save { background: var(--primary);  color: white; }
+.mem-btn-delete { background: var(--danger); color: white; }
+
+.mem-btn-add:hover,
+.mem-btn-save:hover    { background: var(--primary-dark); transform: translateY(-1px); }
+.mem-btn-delete:hover  { background: #DC2626; transform: translateY(-1px); }
+
+.mem-meal-buttons {
+  margin-top: 10px;
+  display: flex;
+  gap: 15px;
+}
+
+.mem-meal-buttons button {
+  padding: 7px 16px;
+  border-radius: var(--radius-sm);
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s ease;
+   margin-right: 10px !important;
+}
+
+.mem-meal-buttons button:nth-child(1) { background: var(--primary);  color: white; }
+.mem-meal-buttons button:nth-child(2) { background: var(--danger);   color: white; }
+.mem-meal-buttons button:nth-child(3) { background: var(--primary);  color: white; }
+
+.mem-meal-buttons button:hover { opacity: 0.88; transform: translateY(-1px); }
+
+.mem-save-btn {
+  margin-top: 15px;
+  padding: 10px 25px;
+  background: var(--primary);
+  border: none;
+  border-radius: var(--radius-md);
+  color: white;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: var(--shadow-orange);
+  transition: all 0.2s ease;
+}
+
+.mem-save-btn:hover {
+  background: var(--primary-dark);
+  transform: translateY(-2px);
+}
+
+/* ================= VALUE CARD ================= */
+.mem-value-card-container {
+  width: 900px;
+  padding: 20px 10px;
+}
+
+.mem-value-card-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+}
+
+.mem-form-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.mem-form-row label {
+  width: 140px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.mem-form-row input {
+  flex: 1;
+  padding: 6px 10px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-input);
+  color: var(--text-primary);
+}
+
+.mem-form-row input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-light);
+  background: var(--bg-card);
+}
+
+/* ================= OTHER BOX ================= */
+.mem-other-box {
+  width: 900px;
+  margin: 20px auto;
+  padding: 30px;
+}
+
+.mem-other-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+}
+
+.mem-other-left {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mem-other-right {
+  display: flex;
+  justify-content: space-around;
+}
+
+.mem-amount {
+  text-align: right;
+}
+
+.mem-input-with-btn {
+  display: flex;
+}
+
+.mem-input-with-btn input { width: 140px; }
+.mem-input-with-btn button { width: 35px; margin-left: 5px; }
+
+.mem-dot-btn { width: 35px; margin-left: 5px; }
+
+.mem-date-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.mem-date-group input {
+  width: 50px;
+  text-align: center;
+}
+
+.mem-upload-big {
+  width: 140px;
+  height: 80px;
+  background: var(--bg-muted);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--text-secondary);
+  transition: all 0.2s ease;
+}
+
+.mem-upload-big:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: var(--primary-light);
+}
+
+/* ================= CHECKBOX GROUP ================= */
+.mem-checkbox-group {
+  display: flex;
+  align-items: center;
+  gap: 40px;
+}
+
+.mem-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.mem-checkbox input {
+  transform: scale(1.1);
+  margin: 0;
+  accent-color: var(--primary);
+}
+
+.input-with-btn {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.input-with-btn input {
+  flex: 1;
+  padding: 8px;
+  border-radius: 8px;
+}
+
+.input-with-btn button {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  border: none;
+  background: #eee;
+  cursor: pointer;
+}
