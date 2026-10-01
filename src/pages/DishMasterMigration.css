@@ -1,0 +1,187 @@
+.dish-migration-page {
+    width: 100%;
+    min-height: 100vh;
+    padding: 25px;
+    background: #f5f6f8;
+    box-sizing: border-box;
+}
+
+.dish-migration-header {
+    margin-bottom: 20px;
+}
+
+.dish-migration-header h1 {
+    margin: 0;
+    font-size: 26px;
+    font-weight: 600;
+}
+
+.dish-migration-box {
+    background: #ffffff;
+    border-radius: 10px;
+    padding: 25px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+}
+
+.migration-section {
+    padding-bottom: 25px;
+    margin-bottom: 25px;
+    border-bottom: 1px solid #e5e5e5;
+}
+
+.migration-section h3,
+.validation-section h3,
+.preview-section h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    font-size: 17px;
+}
+
+.migration-btn {
+    border: none;
+    border-radius: 6px;
+    padding: 10px 18px;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.template-btn {
+    background: #333;
+    color: white;
+}
+
+.upload-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.upload-btn {
+    background: #2563eb;
+    color: white;
+}
+
+.selected-file {
+    margin-top: 12px;
+    font-size: 14px;
+}
+
+.validation-section {
+    margin-bottom: 25px;
+}
+
+.validation-summary {
+    display: flex;
+    gap: 15px;
+}
+
+.summary-card {
+    min-width: 180px;
+    padding: 15px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background: #fafafa;
+}
+
+.summary-card span {
+    display: block;
+    font-size: 13px;
+    margin-bottom: 8px;
+}
+
+.summary-card strong {
+    font-size: 24px;
+}
+
+.error-card {
+    border-color: #f0b4b4;
+}
+
+.preview-section {
+    margin-top: 20px;
+}
+
+.table-container {
+    width: 100%;
+    overflow-x: auto;
+}
+
+.migration-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 1100px;
+}
+
+.migration-table th,
+.migration-table td {
+    border: 1px solid #ddd;
+    padding: 10px;
+    text-align: left;
+    font-size: 13px;
+}
+
+.migration-table th {
+    background: #f1f3f5;
+    font-weight: 600;
+}
+
+.no-records {
+    text-align: center !important;
+    padding: 30px !important;
+    color: #777;
+}
+
+.migration-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 25px;
+}
+
+.post-btn {
+    background: #198754;
+    color: white;
+    min-width: 130px;
+}
+
+.post-btn:disabled {
+    background: #aaa;
+    cursor: not-allowed;
+}
+
+/* ── ROW COLORS ── */
+.row-valid td { background: #f0fff4; }
+.row-error td { background: #fff5f5; }
+
+/* ── STATUS BADGES ── */
+.status-badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+}
+.badge-valid { background: #d1fae5; color: #065f46; }
+.badge-error { background: #fee2e2; color: #991b1b; }
+
+/* ── VALID SUMMARY CARD ── */
+.valid-card { border-color: #a7f3d0; }
+
+/* ── GUID CELL ── */
+.guid-cell {
+    max-width: 160px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 11px;
+    color: #555;
+}
+
+/* ── REMARK CELL ── */
+.remark-cell { color: #b91c1c; font-size: 12px; }
+
+/* ── HINT ── */
+.no-records-hint {
+    flex: 1;
+    font-size: 13px;
+    color: #888;
+}

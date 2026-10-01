@@ -1,23 +1,25 @@
 /* RESET */
-.sales html, 
+.sales html,
 .sales body {
   margin: 0;
   padding: 0;
-  background: #e9ecef;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: #faf8f5;
+  font-family: 'Cambria', 'Times New Roman', serif;
+  font-size: 14px;
 }
-
+ 
 /* FULL SCREEN */
 .sales .report-container {
   max-width: 1400px;
-  margin: 20px auto;
-  padding: 20px;
+   margin: 0 auto;
+  padding: 0 20px;
   background: #fff;
-  border-radius: 8px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  border-radius: 12px;
+  border: 1.5px solid #ede9e2;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.02);
   box-sizing: border-box;
 }
-
+ 
 /* ============================================ */
 /* NEW HEADER STYLES - Date Top Right, No Title */
 /* ============================================ */
@@ -25,57 +27,59 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
-  padding-bottom: 15px;
-  border-bottom: 2px solid #1a3a5c;
-  flex-wrap: wrap;
+  margin-bottom: 12px;
+  padding-bottom: 0px;
+  border-bottom: none;
 }
-
+ 
 .sales .header-left {
   flex: 1;
 }
-
+ 
 .sales .header-center {
   flex: 2;
   text-align: center;
 }
-
+ 
 .sales .header-right {
   flex: 1;
   text-align: right;
 }
-
+ 
 .sales .company-name-header {
-  font-size: 18px;
+  font-size: 22px;
   font-weight: 800;
-  color: #1a3a5c;
+  color: #ff7f27;
   letter-spacing: 1px;
   text-transform: uppercase;
+  font-family: 'Cambria', 'Times New Roman', serif;
 }
-
+ 
 .sales .company-address-header {
-  font-size: 11px;
+  font-size: 13px;
   color: #555;
   margin-top: 4px;
+  font-family: 'Cambria', 'Times New Roman', serif;
 }
-
+ 
 .sales .company-phone-header {
-  font-size: 11px;
+  font-size: 13px;
   color: #666;
   margin-top: 2px;
+  font-family: 'Cambria', 'Times New Roman', serif;
 }
-
+ 
 .sales .current-datetime {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
-  color: #1a3a5c;
-  background: #f0f4f8;
-  padding: 5px 12px;
+  color: #ff7f27;
+  background: #fffcf9;
+  padding: 6px 14px;
   border-radius: 20px;
   display: inline-block;
-  font-family: 'Courier New', monospace;
+  font-family: 'Cambria', 'Times New Roman', serif;
 }
-
+ 
 /* OLD HEADER STYLES - Commented but kept for reference */
 /* .sales .report-title {
   font-size: 22px;
@@ -84,7 +88,7 @@
   margin: 0;
   letter-spacing: 1px;
 } */
-
+ 
 /* FILTER SECTION */
 .sales .filter-section {
   width: 100%;
@@ -95,27 +99,27 @@
   border-radius: 8px;
   box-sizing: border-box;
 }
-
+ 
 .sales .filter-row {
   display: flex;
   flex-wrap: wrap;
   gap: 15px;
   align-items: flex-end;
 }
-
+ 
 .sales .secondary-filters {
   margin-top: 15px;
   padding-top: 15px;
   border-top: 1px dashed #eee;
 }
-
+ 
 .sales .filter-group {
   display: flex;
   flex-direction: column;
   flex: 1;
-  min-width: 150px;
+  min-width: 120px;
 }
-
+ 
 .sales .filter-group.checkbox-group {
   flex-direction: row;
   align-items: center;
@@ -123,78 +127,92 @@
   padding-bottom: 8px;
   min-width: 250px;
 }
-
+ 
 .sales .tb-label {
   font-weight: 600;
-  font-size: 11px;
+  font-size: 13px;
   color: #666;
   margin-bottom: 6px;
   text-transform: capitalize;
+  font-family: 'Cambria', 'Times New Roman', serif;
 }
-
+ 
 .sales .filter-section select,
 .sales .filter-section input[type="date"],
 .sales .filter-section input:not([type="radio"]):not([type="checkbox"]) {
   width: 100%;
-  height: 38px;
-  font-size: 13px;
-  padding: 0 10px;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
+  height: 42px;
+  font-size: 14px;
+  padding: 0 12px;
+  border: 1.5px solid #ede9e2;
+  border-radius: 8px;
   box-sizing: border-box;
-  background-color: #fff;
-  color: #374151;
-  transition: all 0.2s;
+  background-color: #f0ece6;
+  color: #5d544f;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.sales .filter-section select.has-value,
+.sales .filter-section input.has-value {
+  border: 2.2px solid #ff7f27 !important;
+  background-color: #ffffff !important;
+  color: #333 !important;
 }
 
 .sales .filter-section select:focus,
 .sales .filter-section input:focus {
   outline: none;
-  border-color: #1a3a5c;
-  box-shadow: 0 0 0 3px rgba(26,58,92,0.1);
+  border-color: #ff7f27 !important;
+  background-color: #ffffff !important;
+  box-shadow: 0 0 0 3px rgba(255,127,39,0.1);
 }
-
+ 
 .sales .filter-actions {
   display: flex;
   gap: 10px;
   padding-bottom: 2px;
 }
-
+ 
 .sales .find-btn,
 .sales .clear-btn {
-  height: 38px;
-  padding: 0 24px;
-  font-size: 13px;
-  font-weight: 600;
-  border-radius: 6px;
+  height: 40px;
+  padding: 0 26px;
+  font-size: 14px;
+  font-weight: 700;
+  font-family: 'Cambria', 'Times New Roman', serif;
+  border-radius: 20px;
   cursor: pointer;
-  border: none;
   transition: all 0.2s;
   display: flex;
   align-items: center;
   justify-content: center;
 }
-
+ 
 .sales .find-btn {
-  background: #1a3a5c;
-  color: white;
+  background: #fff;
+  color: #ff7f27;
+  border: 2px solid #ff7f27;
 }
-
+ 
 .sales .find-btn:hover {
-  background: #0d2a44;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  background: #ff7f27;
+  color: #fff;
+  box-shadow: 0 4px 10px rgba(255, 127, 39, 0.15);
 }
-
+ 
 .sales .clear-btn {
-  background: #6b7280;
-  color: white;
+  background: #fff;
+  color: #6b7280;
+  border: 2px solid #6b7280;
 }
-
+ 
 .sales .clear-btn:hover {
-  background: #4b5563;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  background: #6b7280;
+  color: #fff;
+  box-shadow: 0 4px 10px rgba(107, 114, 128, 0.15);
 }
-
+ 
 .sales .checkbox-group label {
   display: flex;
   align-items: center;
@@ -204,54 +222,54 @@
   color: #4b5563;
   cursor: pointer;
 }
-
+ 
 .sales .checkbox-group input[type="checkbox"] {
   width: 16px;
   height: 16px;
   cursor: pointer;
 }
-
+ 
 /* LOV INPUT */
 .sales .lov-input-group {
   display: flex;
   width: 100%;
 }
-
+ 
 .sales .lov-input-group input {
   flex: 1;
   border-top-right-radius: 0 !important;
   border-bottom-right-radius: 0 !important;
 }
-
+ 
 .sales .lov-btn {
   width: 38px;
   height: 38px;
-  border: 1px solid #d1d5db;
+  border: 1.5px solid #ede9e2;
   border-left: none;
-  background: #f3f4f6;
+  background: #ede9e2;
   cursor: pointer;
   border-radius: 0 6px 6px 0;
   font-weight: bold;
-  color: #4b5563;
+  color: #5d544f;
   transition: background 0.2s;
 }
-
+ 
 .sales .lov-btn:hover {
-  background: #e5e7eb;
+  background: #dcd7ce;
 }
-
+ 
 /* VIEW MODE SELECT */
 .sales .view-mode-select {
   background-color: #fff !important;
 }
-
+ 
 /* DOWNLOAD BUTTON */
 .sales .download-container {
   display: flex;
   justify-content: flex-end;
   margin: 15px 0 10px;
 }
-
+ 
 .sales .download-btn {
   background: #198754;
   color: white;
@@ -265,13 +283,13 @@
   justify-content: center;
   transition: all 0.2s;
 }
-
+ 
 .sales .download-btn:hover {
   background: #157347;
   transform: scale(1.05);
   box-shadow: 0 2px 8px rgba(0,0,0,0.2);
 }
-
+ 
 /* REPORT TABLE */
 .sales .report-table {
   width: 100%;
@@ -282,65 +300,87 @@
   border-radius: 0px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.08);
 }
-
+ 
 .sales .report-table th {
   background: linear-gradient(135deg, #1a3c5a 0%, #1a3c5a 100%);
   color: white;
-  padding: 14px 15px;
+  padding: 16px 18px;
   font-weight: 600;
   text-align: center;
-  font-size: 13px;
+  font-size: 17px;
   letter-spacing: 0.5px;
-  border-radius: 0 !important;  
+  border-radius: 0 !important;
+  font-family: 'Cambria', 'Times New Roman', serif;
+}
+ 
+.sales .report-table th, 
+.sales .professional-table th,
+.sales .report-table td, 
+.sales .professional-table td {
+  text-align: center !important;
 }
 
 .sales .report-table td {
-  padding: 10px 15px;
+  padding: 12px 16px;
   border-bottom: 1px solid #f0f0f0;
-  font-size: 12px;
+  font-size: 15px;
   color: #444;
+  font-family: 'Cambria', 'Times New Roman', serif;
 }
-
+ 
 .sales .report-table tr:nth-child(even) {
   background-color: #f8f9fa;
 }
-
+ 
 .report-table tr:last-child td {
   border-bottom: none;
 }
-
+ 
 .sales .report-table tr:hover {
   background-color: #fafbfd;
 }
-
+ 
 /* GRAND TOTAL */
 .sales .grand-total-container {
   background-color: #eef2f8;
   font-weight: 700;
   border-top: 2px solid #1a3c5a;
   color: #1a3c5a;
-  font-size: 13px;
-  padding: 12px 15px;
+  font-size: 16px;
+  padding: 14px 16px;
+  font-family: 'Cambria', 'Times New Roman', serif;
 }
 
+/* Stronger print override to ensure larger fonts when printing or generating PDF from browser */
+@media print {
+  html, body, .sales { font-family: 'Cambria', 'Times New Roman', serif !important; font-size: 19px !important; }
+  .sales .report-table th, .sales .professional-table th { font-size: 20px !important; padding: 10px 12px !important; }
+  .sales .report-table td, .sales .professional-table td { font-size: 18px !important; padding: 8px 10px !important; }
+  .sales .report-header .company-name-header { font-size: 28px !important; }
+  .sales .company-address-header, .sales .company-phone-header, .sales .current-datetime { font-size: 17px !important; }
+  .sales .grand-total-container, .sales .professional-table .grand-total-row td { font-size: 20px !important; }
+  /* Ensure table doesn't shrink too aggressively */
+  .sales .report-table, .sales .professional-table { border-collapse: collapse; width: 100% !important; }
+}
+ 
 /* RESPONSIVE */
 @media (max-width: 1200px) {
   .sales .report-container {
     margin: 10px;
     padding: 15px;
   }
-  
+ 
   .sales .filter-layout-table td {
     display: block;
     width: 100%;
   }
-  
+ 
   .sales .to-date-container {
     flex-direction: column;
     align-items: flex-start;
   }
 }
-
+ 
 /* Responsive for new header */
 @media (max-width: 768px) {
   .sales .report-header {
@@ -348,7 +388,7 @@
     text-align: center;
     gap: 10px;
   }
-  
+ 
   .sales .header-left,
   .sales .header-center,
   .sales .header-right {
@@ -356,12 +396,12 @@
     width: 100%;
     text-align: center;
   }
-  
+ 
   .sales .header-right {
     text-align: center;
   }
 }
-
+ 
 /* LOV Modal Styles */
 .sales .lov-modal {
   position: fixed;
@@ -375,7 +415,7 @@
   justify-content: center;
   z-index: 1000;
 }
-
+ 
 .sales .lov-modal-content {
   background: white;
   border-radius: 8px;
@@ -386,7 +426,7 @@
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
   animation: modalSlideIn 0.2s ease-out;
 }
-
+ 
 @keyframes modalSlideIn {
   from {
     transform: translateY(-50px);
@@ -397,22 +437,22 @@
     opacity: 1;
   }
 }
-
+ 
 .sales .lov-modal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 12px 16px;
-  background: #1a3a5c;
+  background: #ff7f27;
   color: white;
 }
-
+ 
 .sales .lov-modal-header h3 {
   margin: 0;
   font-size: 14px;
   font-weight: 600;
 }
-
+ 
 .sales .lov-modal-header button {
   background: none;
   border: none;
@@ -423,17 +463,17 @@
   line-height: 1;
   transition: opacity 0.2s;
 }
-
+ 
 .sales .lov-modal-header button:hover {
   opacity: 0.8;
 }
-
+ 
 .sales .lov-modal-body {
   padding: 5px 0;
   max-height: 400px;
   overflow-y: auto;
 }
-
+ 
 .sales .lov-item {
   padding: 10px 16px;
   cursor: pointer;
@@ -441,61 +481,61 @@
   transition: all 0.2s;
   font-size: 13px;
 }
-
+ 
 .sales .lov-item:hover {
   background: #f0f4f8;
   padding-left: 20px;
 }
-
+ 
 .sales .lov-item:first-of-type {
   color: #dc3545;
   font-style: italic;
 }
-
+ 
 .sales .lov-item:first-of-type:hover {
   background: #ffe6e6;
 }
-
+ 
 /* Scrollbar for LOV modal */
 .sales .lov-modal-body::-webkit-scrollbar {
   width: 6px;
 }
-
+ 
 .sales .lov-modal-body::-webkit-scrollbar-track {
   background: #f1f1f1;
 }
-
+ 
 .sales .lov-modal-body::-webkit-scrollbar-thumb {
   background: #888;
   border-radius: 3px;
 }
-
+ 
 .sales .lov-modal-body::-webkit-scrollbar-thumb:hover {
   background: #555;
 }
-
+ 
 /* Grand Total Row Style */
 .grand-total-row td {
   font-weight: bold;
   background-color: #f5f5f5;
   border-top: 2px solid #000;
 }
-
+ 
 .grand-total-row td:first-child {
   text-align: left;
   font-weight: bold;
 }
-
+ 
 .grand-total-row td:last-child {
   text-align: right;
   font-weight: bold;
 }
-
+ 
 .professional-report-wrapper {
   background: transparent;
   padding: 20px 0;
 }
-
+ 
 /* Professional Table - Override any conflicting styles */
 .professional-table {
   width: 100% !important;
@@ -504,33 +544,33 @@
   box-shadow: none !important;
   border-radius: 0 !important;  /* ← ADD THIS */
 }
-
+ 
 /* Table Responsive - Horizontal Scroll */
 .table-responsive {
   overflow-x: auto;
   width: 100%;
   -webkit-overflow-scrolling: touch;
 }
-
+ 
 .sales-table {
   min-width: 1200px;
   width: 100%;
   border-collapse: collapse;
 }
-
+ 
 .sales-table th,
 .sales-table td {
   white-space: nowrap;
   padding: 8px 12px;
 }
-
+ 
 /* For smaller screens */
 @media (max-width: 768px) {
   .sales-table {
     min-width: 1000px;
   }
 }
-
+ 
 /* PROFESSIONAL REPORT STYLES */
 .professional-report-wrapper {
   background: white;
@@ -538,10 +578,10 @@
   border: 1px solid #ddd;
   box-shadow: 0 0 20px rgba(0,0,0,0.05);
   margin-top: 20px;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-family: 'Cambria', 'Times New Roman', serif;
   color: #333;
 }
-
+ 
 .prof-header-container {
   display: flex;
   justify-content: space-between;
@@ -549,110 +589,146 @@
   margin-bottom: 5px;
   padding-bottom: 10px;
 }
-
+ 
 .prof-logo-section {
   width: 20%;
 }
-
+ 
 .prof-logo-section img {
   max-height: 80px;
   width: auto;
 }
-
+ 
 .prof-company-section {
   width: 60%;
   text-align: center;
 }
-
+ 
 .prof-company-name {
-  font-size: 24px;
+  font-size: 26px;
   font-weight: 800;
-  color: #1a3a5c;
+  color: #ff7f27;
   margin-bottom: 6px;
   text-transform: uppercase;
   letter-spacing: 1px;
+  font-family: 'Cambria', 'Times New Roman', serif;
 }
-
+ 
 .prof-company-address {
   font-size: 13px;
   color: #555;
   font-weight: 500;
   text-transform: uppercase;
 }
-
+ 
 .prof-date-section {
   width: 20%;
   text-align: right;
   font-size: 12px;
   color: #444;
 }
-
+ 
 .prof-date-line {
   margin-bottom: 4px;
   font-weight: 500;
 }
-
+ 
 .prof-divider {
-  border-bottom: 2px solid #1a3a5c;
+  border-bottom: 2px solid #ff7f27;
   margin-bottom: 30px;
 }
-
+ 
 .prof-title-container {
   display: flex;
   justify-content: center;
   margin-bottom: 35px;
 }
-
+ 
 .prof-report-title-box {
-  background-color: #f1f4f8;
+  background-color: #fff5ee;
   padding: 10px 40px;
   font-size: 18px;
   font-weight: 700;
-  color: #1a3a5c;
+  color: #ff7f27;
   text-transform: uppercase;
   letter-spacing: 1px;
   border-radius: 2px;
-  box-shadow: inset 0 0 0 1px rgba(26,58,92,0.1);
+  box-shadow: inset 0 0 0 1px rgba(255,127,39,0.1);
 }
-
+ 
 .professional-table {
-  width: 100% !important;
+  width: auto !important;
+  margin: 0 auto !important;
+  min-width: 650px;
+  max-width: 100%;
   border-collapse: collapse !important;
   margin-top: 0 !important;
   box-shadow: none !important;
 }
-
+ 
 .professional-table th {
-  background: #1a3a5c !important;
-  color: white !important;
+  background: #ede9e2 !important;
+  color: #5d544f !important;
   padding: 14px 12px !important;
-  font-weight: 600 !important;
-  border: 1px solid #1a3a5c !important;
+  font-weight: 700 !important;
+  border: 1px solid #dcd7ce !important;
   text-transform: uppercase;
   font-size: 13px !important;
   border-radius: 0 !important;  /* ← ADD THIS */
 }
-
+ 
 .professional-table td {
-  padding: 12px 12px !important;
-  border: 1px solid #e0e0e0 !important;
-  font-size: 13px !important;
+  padding: 14px 14px !important;
+  border: 1px solid #e8e4dc !important;
+  font-size: 15px !important;
   color: #333 !important;
+  font-family: 'Cambria', 'Times New Roman', serif !important;
 }
-
+ 
 .professional-table tr:nth-child(even) {
-  background-color: #fafafa !important;
+  background-color: #fbfaf8 !important;
 }
-
+ 
 .professional-table .grand-total-row td {
-  background-color: #f8f9fa !important;
+  background-color: #fffbf7 !important;
   font-weight: 700 !important;
-  border-top: 2px solid #1a3a5c !important;
-  color: #1a3a5c !important;
+  border-top: 2px solid #ff7f27 !important;
+  color: #ff7f27 !important;
   font-size: 14px !important;
   padding: 15px 12px !important;
 }
 
+/* Category & Dish Group Header Rows */
+.professional-table .category-header-row td {
+  background-color: #ede9e2 !important;
+  color: #5d544f !important;
+  font-weight: 700 !important;
+  font-size: 14px !important;
+  padding: 10px 14px !important;
+  text-align: left !important;
+  border-top: 1.5px solid #dcd7ce !important;
+  border-bottom: 1.5px solid #dcd7ce !important;
+  text-transform: uppercase;
+}
+
+.professional-table .dishgroup-header-row td {
+  background-color: #f5f2eb !important;
+  color: #66605a !important;
+  font-weight: 600 !important;
+  font-size: 13px !important;
+  padding: 8px 14px 8px 24px !important;
+  text-align: left !important;
+  border-top: 1px solid #e8e4dc !important;
+  border-bottom: 1px solid #e8e4dc !important;
+}
+
+.professional-table .spacer-row td {
+  background: transparent !important;
+  border: none !important;
+  height: 10px !important;
+  padding: 0 !important;
+}
+ 
 .prof-report-footer {
   margin-top: 50px;
   text-align: center;
@@ -666,7 +742,7 @@
   justify-content: center;
   align-items: center;
 }
-
+ 
 .prof-report-footer .powered-msg {
   position: absolute;
   right: 0;
@@ -687,7 +763,7 @@
 }
 /* Download Button Inside Report - Icon Only */
 .sales .download-btn-inside {
-  background: #198754;
+  background: #ff7f27;
   color: white;
   width: 36px;
   height: 36px;
@@ -700,14 +776,167 @@
   justify-content: center;
   transition: all 0.2s;
 }
-
+ 
 .sales .download-btn-inside:hover {
-  background: #157347;
+  background: #e06c1b;
   transform: scale(1.05);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  box-shadow: 0 2px 8px rgba(255, 127, 39, 0.15);
 }
-
+ 
 .sales .download-btn-inside svg {
   width: 18px;
   height: 18px;
 }
+ 
+/* Day Total Row Highlights */
+.sales .day-total-row td {
+  font-weight: bold !important;
+  background-color: #fffcf9 !important;
+  border-top: 1.5px solid #ff7f27 !important;
+  border-bottom: 1.5px solid #ff7f27 !important;
+  color: #ff7f27 !important;
+}
+.sales .report-title {
+  margin: 0 !important;
+  padding: 0 !important;
+  font-size: 26px !important;
+  font-weight: 700 !important;
+  color: #1a3c5a !important;
+}
+ 
+.sales .filter-section {
+  margin-top: 0 !important;
+}
+
+/* KPI Summary Cards for Sales Analysis */
+.sales .analysis-kpi-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin-bottom: 25px;
+  width: 100%;
+}
+
+.sales .analysis-kpi-card {
+  background: #ffffff;
+  border: 1.5px solid #ede9e2;
+  border-radius: 16px;
+  padding: 14px 12px;
+  height: 90px;
+  min-height: 90px;
+  max-height: 90px;
+  box-shadow: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  transition: all 0.3s ease;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+ 
+.sales .analysis-kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(255, 127, 39, 0.06);
+  border-color: #ff7f27;
+}
+
+.sales .analysis-kpi-title {
+  font-size: 11px;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+  font-weight: 600;
+  text-align: center;
+  width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sales .analysis-kpi-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: #ff7f27;
+  font-family: 'Cambria', serif;
+  text-align: center;
+  width: 100%;
+  line-height: 1.2;
+  word-break: break-word;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* LOV Input Group Styling */
+.sales .lov-input-group {
+  display: flex;
+  align-items: center;
+  position: relative;
+  width: 100%;
+}
+
+.sales .lov-input-group input {
+  flex: 1;
+  padding-right: 45px !important;
+  border-top-right-radius: 8px !important;
+  border-bottom-right-radius: 8px !important;
+}
+
+.sales .lov-btn {
+  position: absolute;
+  right: 1px;
+  top: 1px;
+  bottom: 1px;
+  width: 40px;
+  height: calc(100% - 2px);
+  background: transparent;
+  border: none;
+  font-size: 18px;
+  font-weight: bold;
+  color: #5d544f;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0 7px 7px 0;
+  transition: all 0.2s ease;
+}
+
+.sales .lov-btn:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+  color: #1a3c5a;
+}
+
+/* Styling for Category/DishGroup grouping headers and borderless spacers */
+.professional-table tr.category-header-row td {
+  border: none !important;
+  border-bottom: 2px solid #1a3c5a !important;
+  background-color: #eef2f8 !important;
+  color: #1a3c5a !important;
+  font-weight: bold !important;
+  font-size: 16px !important;
+  padding: 12px 14px !important;
+  text-align: left !important;
+}
+
+.professional-table tr.dishgroup-header-row td {
+  border: none !important;
+  border-bottom: 1px solid #dcd7ce !important;
+  background-color: #f7f9fc !important;
+  color: #555555 !important;
+  font-weight: bold !important;
+  font-size: 14px !important;
+  padding: 10px 14px 10px 28px !important;
+  text-align: left !important;
+}
+
+.professional-table tr.spacer-row td {
+  border: none !important;
+  background: transparent !important;
+  padding: 6px 0 !important;
+  height: 12px !important;
+}
+
+ 

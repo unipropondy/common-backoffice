@@ -45,6 +45,13 @@ const dashboardRoutes = require("./routes/dashboard");
 
 app.use("/api", dashboardRoutes);
 
+const dishMasterMigrationRoutes =
+  require("./routes/dishMasterMigration");
+
+app.use(
+  "/api/dishmaster-migration",
+  dishMasterMigrationRoutes
+);
 const rewardRoutes = require("./routes/rewardRoutes");
 
 console.log("rewardRoutes TYPE:", typeof rewardRoutes);

@@ -2655,7 +2655,7 @@ function mapSalesReportData(rawData, queryParams = {}, summary = null) {
   else if (queryParams.bySales === "BusinessType") {
     reportTitle = "SALES BY BUSINESS TYPE REPORT";
     displayColumns = ['Date', 'Type', 'Bills', 'Pax', 'SubTotal', 'Discount', 'ServiceCharge', 'gst', 'NetTotal', 'SalesPct'];
-    
+
     let overallNetSales = 0;
     rawData.forEach(row => {
       let netTotal = Number(row.NetTotal || 0);
