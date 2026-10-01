@@ -86,7 +86,7 @@ router.post("/", async (req, res) => {
  
       // REQUIRED
       .input("OwnerBusinessUnitId", sql.UniqueIdentifier, uuidv4())
-      .input("CreatedBy", sql.UniqueIdentifier, uuidv4())
+      .input("CreatedBy", sql.UniqueIdentifier, req.body.CreatedBy || req.headers['x-user-id'] || null)
       .input("CreatedOn", sql.DateTime, new Date())
  
       .query(`

@@ -57,8 +57,10 @@ router.post("/", async (req, res) => {
     Name,
     Description,
     SortCode,
-    IsActive
+    IsActive,
+    CreatedBy
   } = req.body;
+  const userId = CreatedBy || req.headers['x-user-id'] || null;
  
   try {
     const pool = await poolPromise;
@@ -68,6 +70,7 @@ router.post("/", async (req, res) => {
       .input("Description", sql.VarChar, Description)
       .input("SortCode", sql.Int, SortCode)
       .input("IsActive", sql.Bit, IsActive)
+      .input("UserId", sql.VarChar, userId)
       .query(`
  
         IF EXISTS (
@@ -80,7 +83,7 @@ router.post("/", async (req, res) => {
             Description = @Description,
             SortCode = @SortCode,
             IsActive = @IsActive,
-            ModifiedBy = NEWID(),
+            ModifiedBy = CAST(@UserId AS UNIQUEIDENTIFIER),
             ModifiedOn = GETDATE()
           WHERE Name = @Name
         END
@@ -108,7 +111,7 @@ router.post("/", async (req, res) => {
             GETDATE(),
             DATEADD(YEAR, 2, GETDATE()),
             @IsActive,
-            NEWID(),
+            CAST(@UserId AS UNIQUEIDENTIFIER),
             GETDATE(),
             @SortCode,
             DATEADD(YEAR, 2, GETDATE())
@@ -136,8 +139,10 @@ router.put("/:id", async (req, res) => {
       Name,
       Description,
       SortCode,
-      IsActive
+      IsActive,
+      ModifiedBy
     } = req.body;
+    const userId = ModifiedBy || req.headers['x-user-id'] || null;
  
     // ✅ ID validation
     const isValidGUID = /^[0-9a-fA-F-]{36}$/.test(id);
@@ -152,6 +157,7 @@ router.put("/:id", async (req, res) => {
       .input("Description", sql.VarChar, Description)
       .input("SortCode", sql.Int, SortCode)
       .input("IsActive", sql.Bit, IsActive)
+      .input("UserId", sql.VarChar, userId)
       .query(`
         UPDATE PriceListMaster
         SET
@@ -159,7 +165,7 @@ router.put("/:id", async (req, res) => {
           Description = @Description,
           SortCode = @SortCode,
           IsActive = @IsActive,
-          ModifiedBy = NEWID(), -- ✅ safe fix
+          ModifiedBy = CAST(@UserId AS UNIQUEIDENTIFIER),
           ModifiedOn = GETDATE()
         WHERE PriceListId = @id
       `);

@@ -97,8 +97,12 @@ router.post("/", async (req, res) => {
 
     // Check for CreatedBy column
     if (columns.includes("createdby")) {
-      insertFields.push("CreatedBy");
-      valuePlaceholders.push("NEWID()"); // Pass a new creator GUID
+      const createdByUserId = req.body.CreatedBy || req.headers['x-user-id'] || null;
+      if (createdByUserId) {
+        insertFields.push("CreatedBy");
+        valuePlaceholders.push("@CreatedBy");
+        requestObj = requestObj.input("CreatedBy", sql.UniqueIdentifier, createdByUserId);
+      }
     }
 
     // Check for IsActive column
@@ -182,10 +186,13 @@ router.put("/:id", async (req, res) => {
     ];
 
     // Check for ModifiedBy / ModifyUser
-    if (columns.includes("modifiedby")) {
-      updateFields.push("ModifiedBy = NEWID()");
-    } else if (columns.includes("modifyuser")) {
-      updateFields.push("ModifyUser = NEWID()");
+    const modifiedByUserId = req.body.ModifiedBy || req.headers['x-user-id'] || null;
+    if (columns.includes("modifiedby") && modifiedByUserId) {
+      updateFields.push("ModifiedBy = @ModifiedBy");
+      requestObj = requestObj.input("ModifiedBy", sql.UniqueIdentifier, modifiedByUserId);
+    } else if (columns.includes("modifyuser") && modifiedByUserId) {
+      updateFields.push("ModifyUser = @ModifiedBy");
+      requestObj = requestObj.input("ModifiedBy", sql.UniqueIdentifier, modifiedByUserId);
     }
 
     // Check for datetime columns

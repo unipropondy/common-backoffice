@@ -72,7 +72,7 @@ router.get("/:id", async (req, res) => {
   .input("ShortName", sql.VarChar, ShortName || "")
   .input("isDiscountAllowed", sql.Bit, isDiscountAllowed ?? false)
   .input("VendorId", sql.UniqueIdentifier, VendorId || "00000000-0000-0000-0000-000000000000")
-  .input("CreatedBy", sql.UniqueIdentifier, "00000000-0000-0000-0000-000000000000")
+  .input("CreatedBy", sql.UniqueIdentifier, req.body.CreatedBy || req.headers['x-user-id'] || null)
 
       .query(`
         INSERT INTO InventoryMaster (
