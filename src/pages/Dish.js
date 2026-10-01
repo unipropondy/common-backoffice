@@ -180,6 +180,10 @@ function Dish() {
       // 🔥 create FormData
       const formData = new FormData();
 
+      const userId = localStorage.getItem("userId");
+
+      formData.append("CreatedBy", userId);
+
       // 🔥 append all fields
       Object.keys(dish).forEach((key) => {
         if (typeof dish[key] === "boolean") {
@@ -368,19 +372,34 @@ function Dish() {
 
   const openNewDish = async () => {
     try {
-      setDish(emptyDish);
+      // 🔥 Fetch next auto-generated DishCode
+      const codeRes = await axios.get(`${BASE_URL}/dish/nextcode`);
+      const nextCode = codeRes.data?.code || "";
+
+      setDish({ ...emptyDish, DishCode: nextCode });
       setSelecteddishKitchens([]);
       setSelecteddishModifiers([]);
       setSelectedDishGroups([]);
       setSelectedOrderItemShare([]);
       setDishModifierGroups([]);  // ✅ RESET
-      setDishImage(null);        // 🔥 ADD THIS
+      setDishImage(null);
       setExistingImage(null);
       setEditIndex(null);
       setShowModal(true);
 
     } catch (err) {
       console.log("CODE LOAD ERROR ❌", err);
+      // Still open modal even if code fetch fails
+      setDish(emptyDish);
+      setSelecteddishKitchens([]);
+      setSelecteddishModifiers([]);
+      setSelectedDishGroups([]);
+      setSelectedOrderItemShare([]);
+      setDishModifierGroups([]);
+      setDishImage(null);
+      setExistingImage(null);
+      setEditIndex(null);
+      setShowModal(true);
     }
   };
 
@@ -986,7 +1005,7 @@ function Dish() {
                     <label>
                       Dish Code <span className="required">*</span>
                     </label>
-                    <input name="DishCode" value={dish.DishCode} onChange={handleChange} />
+                    <input name="DishCode" value={dish.DishCode} onChange={handleChange} readOnly style={{ backgroundColor: "#f0f0f0", cursor: "not-allowed" }} />
                   </div>
 
                   <div className="dish-form-row1">

@@ -1,15 +1,15 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import "./Paymode.css";
- import { BASE_URL } from "../config/api";
+import { BASE_URL } from "../config/api";
 function Paymode() {
- 
+
   const [mode, setMode] = useState("list");
   const [data, setData] = useState([]);
   const [editId, setEditId] = useState(null);
 
   const [loading, setLoading] = useState(false);
- 
+
   const [form, setForm] = useState({
     position: "",
     paymode: "",
@@ -21,7 +21,7 @@ function Paymode() {
     YeahPayEnabled: false,
     imagePreview: null
   });
- 
+
   // ================= FETCH =================
   const fetchData = async () => {
     try {
@@ -31,11 +31,11 @@ function Paymode() {
       console.log(err);
     }
   };
- 
+
   useEffect(() => {
     fetchData();
   }, []);
- 
+
   // ================= INPUT =================
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -44,25 +44,25 @@ function Paymode() {
       [name]: type === "checkbox" ? checked : value
     });
   };
- 
+
   // ================= IMAGE =================
   const handleImageChange = (e) => {
-  const file = e.target.files[0];
+    const file = e.target.files[0];
 
-  if (!file) return;
+    if (!file) return;
 
-  const reader = new FileReader();
+    const reader = new FileReader();
 
-  reader.onload = () => {
-    setForm(prev => ({
-      ...prev,
-      imagePreview: reader.result
-    }));
+    reader.onload = () => {
+      setForm(prev => ({
+        ...prev,
+        imagePreview: reader.result
+      }));
+    };
+
+    reader.readAsDataURL(file);
   };
 
-  reader.readAsDataURL(file);
-};
- 
   // ================= EDIT =================
   const handleEdit = (item) => {
     setForm({
@@ -76,88 +76,93 @@ function Paymode() {
       YeahPayEnabled: item.YeahPayEnabled === true || item.YeahPayEnabled === 1,
       imagePreview: item.PaymodeImage || null
     });
- 
+
     setEditId(item.Position);
     setMode("form");
   };
- 
+
   // ================= SAVE =================
- const handleSave = async () => {
+  const handleSave = async () => {
 
-  if (!form.position || !form.paymode) {
-    alert("Fill required fields");
-    return;
-  }
-
-  try {
-    setLoading(true);   // 🔥 START LOADING
-
-    const payload = {
-      position: Number(form.position),
-      paymode: form.paymode,
-      description: form.description,
-      DeviceSN: form.DeviceSN,
-      DeviceSalt: form.DeviceSalt,
-      active: form.active,
-      entertainment: form.entertainment,
-      YeahPayEnabled: form.YeahPayEnabled,
-      image: form.imagePreview
-    };
-
-    if (editId !== null) {
-      await axios.put(`${BASE_URL}/api/paymode/${editId}`, payload);
-    } else {
-      await axios.post(`${BASE_URL}/api/paymode`, payload);
+    if (!form.position || !form.paymode) {
+      alert("Fill required fields");
+      return;
     }
 
-    await fetchData();   // 🔥 wait for data
+    try {
+      setLoading(true);   // 🔥 START LOADING
 
-    setMode("list");
-    setEditId(null);
+      const userId = localStorage.getItem("userId");
 
-  } catch (err) {
-    alert("Save failed");
-  } finally {
-    setLoading(false);   // 🔥 ALWAYS STOP (important)
-  }
-};
+      const payload = {
+        position: Number(form.position),
+        paymode: form.paymode,
+        description: form.description,
+        DeviceSN: form.DeviceSN,
+        DeviceSalt: form.DeviceSalt,
+        active: form.active,
+        entertainment: form.entertainment,
+        YeahPayEnabled: form.YeahPayEnabled,
+        image: form.imagePreview,
+
+        CreatedBy: editId === null ? userId : undefined,
+        ModifiedBy: editId !== null ? userId : undefined
+      };
+
+      if (editId !== null) {
+        await axios.put(`${BASE_URL}/api/paymode/${editId}`, payload);
+      } else {
+        await axios.post(`${BASE_URL}/api/paymode`, payload);
+      }
+
+      await fetchData();   // 🔥 wait for data
+
+      setMode("list");
+      setEditId(null);
+
+    } catch (err) {
+      alert("Save failed");
+    } finally {
+      setLoading(false);   // 🔥 ALWAYS STOP (important)
+    }
+  };
   return (
     <div className="payment-page1">
- 
+
       {/* HEADER */}
       <div className="payment-header1">
         <h1 className="payment-title1">Paymode</h1>
       </div>
- 
+
       {/* ================= LIST ================= */}
       {mode === "list" && (
         <div className="payment-box1">
- 
+
           <div className="payment-bottomBtns1">
             <button
               className="payment-btn1 payment-new1"
               onClick={() => {
-  setMode("form");
-  setEditId(null);
+                setMode("form");
+                setEditId(null);
 
-  // 🔥 IMPORTANT - FORM CLEAR
-  setForm({
-    position: "",
-    paymode: "",
-    description: "",
-    DeviceSN: "",
-    DeviceSalt: "",
-    active: true,
-    entertainment: false,
-    YeahPayEnabled: false,
-    imagePreview: null
-  });
-}}
+                // 🔥 IMPORTANT - FORM CLEAR
+                setForm({
+                  position: "",
+                  paymode: "",
+                  description: "",
+                  DeviceSN: "",
+                  DeviceSalt: "",
+                  active: true,
+                  entertainment: false,
+                  YeahPayEnabled: false,
+                  imagePreview: null
+                });
+              }}
             >
               New
             </button>
           </div>
- 
+
           <table className="payment-table1">
             <thead>
               <tr>
@@ -167,7 +172,7 @@ function Paymode() {
                 <th>Active</th>
               </tr>
             </thead>
- 
+
             <tbody>
               {data.length === 0 ? (
                 <tr>
@@ -185,23 +190,23 @@ function Paymode() {
               )}
             </tbody>
           </table>
- 
+
         </div>
       )}
- 
+
       {/* ================= FORM ================= */}
       {mode === "form" && (
         <div className="payment-modalOverlay1">
- 
+
           <div className="payment-modal1">
- 
+
             <h2 className="payment-modalTitle1">
               {editId ? "Edit Paymode" : "New Paymode"}
             </h2>
- 
+
             {/* INPUTS */}
             <div className="payment-modalRow1">
- 
+
               <div className="payment-field1">
                 <label>Position</label>
                 <input
@@ -210,7 +215,7 @@ function Paymode() {
                   onChange={handleChange}
                 />
               </div>
- 
+
               <div className="payment-field1">
                 <label>Paymode</label>
                 <input
@@ -219,7 +224,7 @@ function Paymode() {
                   onChange={handleChange}
                 />
               </div>
- 
+
               <div className="payment-field1">
                 <label>Description</label>
                 <input
@@ -229,7 +234,7 @@ function Paymode() {
                 />
               </div>
 
-               <div className="payment-field1">
+              <div className="payment-field1">
                 <label>DeviceSN</label>
                 <input
                   name="DeviceSN"
@@ -238,14 +243,14 @@ function Paymode() {
                 />
               </div>
 
-              
- 
+
+
             </div>
- 
+
             {/* CHECKBOX + IMAGE */}
             <div className="payment-modalRow1">
 
-               <div className="payment-field2">
+              <div className="payment-field2">
                 <label>DeviceSalt</label>
                 <input
                   name="DeviceSalt"
@@ -253,7 +258,7 @@ function Paymode() {
                   onChange={handleChange}
                 />
               </div>
- 
+
               <div className="payment-checkbox1">
                 <input
                   type="checkbox"
@@ -263,9 +268,9 @@ function Paymode() {
                 />
                 <label>Active</label>
               </div>
- 
+
               {/* IMAGE BOX */}
-             {/* <div className="payment-imageBox1">
+              {/* <div className="payment-imageBox1">
                 {form.imagePreview ? (
                   <img
                     src={form.imagePreview}
@@ -278,9 +283,9 @@ function Paymode() {
                   <span>preview</span>
                 )}
               </div>*/}
- 
+
               {/* FILE INPUT */}
-             {/* <input
+              {/* <input
                 type="file"
                 id="scanInput"
                 accept="image/*"
@@ -311,9 +316,9 @@ function Paymode() {
                 />
                 <label>YeahPayEnabled</label>
               </div>
- 
+
             </div>
- 
+
             {/* BUTTONS */}
             <div className="payment-modalActions1">
               <button
@@ -322,25 +327,24 @@ function Paymode() {
               >
                 Save
               </button>
- 
+
               <button
                 className="payment-btn1 payment-exit1"
-               onClick={() => {
-  window.location.reload();   // 🔥 page refresh
-}}
+                onClick={() => {
+                  window.location.reload();   // 🔥 page refresh
+                }}
               >
                 Cancel
               </button>
             </div>
- 
+
           </div>
- 
+
         </div>
       )}
- 
+
     </div>
   );
 }
- 
+
 export default Paymode;
- 

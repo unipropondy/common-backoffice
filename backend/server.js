@@ -581,7 +581,13 @@ app.post("/category", upload.single("image"), async (req, res) => {
         .input("isDispName", sql.Bit, parseBit(isDispName))
         .input("isMemberSalesAllowed", sql.Bit, parseBit(isMemberSalesAllowed))
         .input("isTaxAllowed", sql.Bit, parseBit(isTaxAllowed))
-        .input("NameInOtherLanguage", sql.VarChar(100), safeNameInOtherLanguage);
+        .input("NameInOtherLanguage", sql.VarChar(100), safeNameInOtherLanguage)
+        .input(
+          "ModifiedBy",
+          sql.UniqueIdentifier,
+          req.body.ModifiedBy || null
+        )
+        .input("ModifiedOn", sql.DateTime, new Date());
 
       // ⭐ only add ImageId if new image uploaded
       request.input("ImageId", sql.UniqueIdentifier, imageId || null);
@@ -603,7 +609,9 @@ isServiceCharge=@isServiceCharge,
 isDispName=@isDispName,
 isMemberSalesAllowed=@isMemberSalesAllowed,
 isTaxAllowed=@isTaxAllowed,
-NameInOtherLanguage=@NameInOtherLanguage
+NameInOtherLanguage=@NameInOtherLanguage,
+ModifiedBy=@ModifiedBy,
+ModifiedOn=@ModifiedOn
 WHERE CategoryId=@CategoryId
 `);
       console.log("Category updated successfully");
@@ -628,7 +636,7 @@ WHERE CategoryId=@CategoryId
         .input("isMemberSalesAllowed", sql.Bit, parseBit(isMemberSalesAllowed))
         .input("isTaxAllowed", sql.Bit, parseBit(isTaxAllowed))
         .input("NameInOtherLanguage", sql.VarChar(100), safeNameInOtherLanguage)
-        .input("CreatedBy", sql.UniqueIdentifier, uuidv4())
+        .input("CreatedBy", sql.UniqueIdentifier, req.body.CreatedBy)
         .input("CreatedOn", sql.DateTime, new Date())
         .query(
           `INSERT INTO CategoryMaster 
@@ -1102,6 +1110,8 @@ app.post("/dishgroup", upload.single("image"), async (req, res) => {
         .input("BackColor", sql.VarChar(50), BackColor)
         .input("ForeColor", sql.VarChar(50), ForeColor)
         .input("ImageId", sql.UniqueIdentifier, imageId)
+        .input("ModifiedBy", sql.UniqueIdentifier, req.body.ModifiedBy || null)
+        .input("ModifiedOn", sql.DateTime, new Date())
         .query(`
          UPDATE DishGroupMaster SET
                 DishGroupCode=@DishGroupCode,
@@ -1119,7 +1129,9 @@ app.post("/dishgroup", upload.single("image"), async (req, res) => {
                 KitchenSortCode=@KitchenSortCode,
                 BackColor=@BackColor,
                 ForeColor=@ForeColor,
-                ImageId = COALESCE(@ImageId, ImageId)
+                ImageId = COALESCE(@ImageId, ImageId),
+                ModifiedBy=@ModifiedBy,
+                ModifiedOn=@ModifiedOn
                 WHERE DishGroupId=@DishGroupId
         `);
 
@@ -1443,23 +1455,26 @@ app.get("/dishimage/:dishId", async (req, res) => {
   }
 });
 
-// app.get("/dish/nextcode", async (req, res) => {
-//   try {
-//     const pool = await poolPromise;
+app.get("/dish/nextcode", async (req, res) => {
+  try {
+    const pool = await poolPromise;
 
-//     const result = await pool.request().query(`
-//       SELECT 
-//         ISNULL(MAX(TRY_CAST(DishCode AS INT)), 0) + 1 AS NewCode
-//       FROM DishMaster
-//     `);
+    const result = await pool.request().query(`
+      SELECT 
+        ISNULL(MAX(TRY_CAST(DishCode AS INT)), 0) + 1 AS NewCode
+      FROM DishMaster
+    `);
 
-//     res.json({ code: String(result.recordset[0].NewCode) });
+    const num = result.recordset[0].NewCode;
+    // Zero-pad to 3 digits: 1 → "001", 8 → "008", 12 → "012"
+    const padded = String(num).padStart(3, "0");
+    res.json({ code: padded });
 
-//   } catch (err) {
-//     console.log("DISH NEXTCODE ERROR:", err);
-//     res.status(500).json({ error: err.message });
-//   }
-// });
+  } catch (err) {
+    console.log("DISH NEXTCODE ERROR:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
 
 app.post("/dish", upload.single("image"), async (req, res) => {
   try {
@@ -1543,6 +1558,10 @@ app.post("/dish", upload.single("image"), async (req, res) => {
         .input("isOpenitem", sql.Bit, Number(d.isOpenitem) === 1)
         .input("IsSplitDish", sql.Bit, Number(d.IsSplitDish) === 1)
         .input("IsgroupDish", sql.Bit, Number(d.IsgroupDish) === 1)
+        .input("CreatedBy", sql.UniqueIdentifier, d.CreatedBy || null)
+        .input("CreatedOn", sql.DateTime, new Date())
+        .input("ModifiedBy", sql.UniqueIdentifier, d.ModifiedBy || null)
+        .input("ModifiedOn", sql.DateTime, new Date())
         .query(`
           UPDATE DishMaster SET
             DishCode=@DishCode,
@@ -1569,7 +1588,9 @@ app.post("/dish", upload.single("image"), async (req, res) => {
             isMultiPrice=@isMultiPrice,
             isOpenitem=@isOpenitem,
             IsSplitDish=@IsSplitDish,
-            IsgroupDish=@IsgroupDish
+            IsgroupDish=@IsgroupDish,
+            ModifiedBy=@ModifiedBy,
+            ModifiedOn=@ModifiedOn
           WHERE DishId=@DishId
         `);
 
@@ -1608,6 +1629,7 @@ app.post("/dish", upload.single("image"), async (req, res) => {
         .input("isOpenitem", sql.Bit, Number(d.isOpenitem) === 1)
         .input("IsSplitDish", sql.Bit, Number(d.IsSplitDish) === 1)
         .input("IsgroupDish", sql.Bit, Number(d.IsgroupDish) === 1)
+        .input("CreatedBy", sql.UniqueIdentifier, d.CreatedBy || null)
         .input("CreatedOn", sql.DateTime, new Date())
 
         .query(`
@@ -1617,7 +1639,7 @@ app.post("/dish", upload.single("image"), async (req, res) => {
             NameInOtherLanguage, IsActive,IsPublished, IsSoldOut,iskitchenPrint,
             isDiscountAllowed, IsTaxAllowed, IsStockDish,
             isFOC, isServiceCharge, isFavourite, isMultiPrice, isOpenitem,IsSplitDish, IsgroupDish,
-            ImageId, KitchenType, SubkitchenType,CreatedOn
+            ImageId, KitchenType, SubkitchenType,CreatedBy,CreatedOn
           )
           VALUES (
             @DishId, @DishCode, @Name, @ShortName, @Description,
@@ -1625,7 +1647,7 @@ app.post("/dish", upload.single("image"), async (req, res) => {
             @NameInOtherLanguage, @IsActive,@IsPublished, @IsSoldOut, @iskitchenPrint,
             @isDiscountAllowed, @IsTaxAllowed, @IsStockDish,
             @isFOC, @isServiceCharge, @isFavourite, @isMultiPrice, @isOpenitem,@IsSplitDish, @IsgroupDish,
-            @ImageId, @KitchenType, @SubkitchenType,@CreatedOn
+            @ImageId, @KitchenType, @SubkitchenType,@CreatedBy,@CreatedOn
           )
         `);
     }
@@ -2105,14 +2127,15 @@ app.post("/modifiermaster", async (req, res) => {
       .input("isDishPrice", sql.Bit, isDishPrice ?? false)
       .input("DishCost", sql.Decimal(18, 2), Number(DishCost) || 0)
       .input("isOpenModifier", sql.Bit, isOpenModifier ?? false)
+      .input("CreatedBy", sql.UniqueIdentifier, req.body.CreatedBy || null)
       .input("CreatedOn", sql.DateTime, new Date())
       .query(`
         INSERT INTO ModifierMaster
         (ModifierId, ModifierCode, ModifierName, ConflictId, isActive, SortCode,
-         isPriceAffect, isDishPrice, DishCost, isOpenModifier, CreatedOn)
+         isPriceAffect, isDishPrice, DishCost, isOpenModifier, CreatedBy,CreatedOn)
         VALUES
         (@ModifierId, @ModifierCode, @ModifierName, @ConflictId, @isActive, @SortCode,
-         @isPriceAffect, @isDishPrice, @DishCost, @isOpenModifier, @CreatedOn)
+         @isPriceAffect, @isDishPrice, @DishCost, @isOpenModifier, @CreatedBy, @CreatedOn)
       `);
 
     res.json({ message: "Modifier created", ModifierId: modId });

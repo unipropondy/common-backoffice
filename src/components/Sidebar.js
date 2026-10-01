@@ -3,13 +3,12 @@ import { useState } from "react";
 import "./Sidebar.css";
 import {
   FaBars, FaTimes, FaSignOutAlt,
-  FaHome, FaUtensils, FaList, FaLayerGroup, FaConciergeBell,
+  FaHome, FaUtensils, FaList, FaLayerGroup,
   FaHamburger, FaSlidersH, FaBox,
   FaMoneyBill, FaChartBar, FaUsers, FaCogs,
   FaDatabase, FaFileAlt, FaExchangeAlt, FaTag, FaLock, FaWrench,
   FaUserShield, FaShieldAlt, FaGlassMartiniAlt, FaFire, FaDollarSign, FaPrint, FaBarcode, FaBan, FaPercent,
-  FaChartLine, FaTachometerAlt,
-  FaTruck, FaWarehouse, FaBullhorn, FaQrcode, FaTable, FaBullseye, FaDesktop, FaCreditCard
+  FaChartLine, FaTachometerAlt
 } from "react-icons/fa";
 import { FaMoneyBillWave } from "react-icons/fa";
 import { BsTerminal } from "react-icons/bs";
@@ -39,7 +38,6 @@ function Sidebar({ open, setOpen }) {
   const [showChangePwd, setShowChangePwd] = useState(false);
   const [targetPassword, setTargetPassword] = useState("");
   const [showTargetModal, setShowTargetModal] = useState(false);
-  const [protectedRoute, setProtectedRoute] = useState("");
   //  const [showTimeEntry, setShowTimeEntry] = useState(false);
 
   const handleLogout = () => {
@@ -67,7 +65,7 @@ function Sidebar({ open, setOpen }) {
       if (res.data.success) {
         setShowTargetModal(false);
         setTargetPassword("");
-        navigate(protectedRoute);
+        navigate("/DishOrderItemShare");
       } else {
         alert("Invalid Password");
       }
@@ -152,7 +150,7 @@ function Sidebar({ open, setOpen }) {
             </NavLink>
 
             <NavLink className={({ isActive }) => `sid-menu ${isActive ? 'active' : ''}`} to="/Dish">
-              <FaConciergeBell className="sid-icon" /> Dish
+              <FaHamburger className="sid-icon" /> Dish
             </NavLink>
             <NavLink className={({ isActive }) => `sid-menu ${isActive ? 'active' : ''}`} to="/ComboGroupMaster">
               <FaHamburger className="sid-icon" /> Combo Group Master
@@ -165,9 +163,9 @@ function Sidebar({ open, setOpen }) {
           <FaSlidersH className="sid-icon" /> Modifier
         </NavLink>
 
-        {/* <NavLink className={({ isActive }) => `sid-menu ${isActive ? 'active' : ''}`} to="/CustomerList">
+        <NavLink className={({ isActive }) => `sid-menu ${isActive ? 'active' : ''}`} to="/CustomerList">
           <FaUsers className="sid-icon" /> Customer
-        </NavLink> */}
+        </NavLink>
 
         <div className="sid-menu" onClick={() => setShowReport(!ShowReport)}>
           <FaFileAlt className="sid-icon" /> Report
@@ -186,7 +184,7 @@ function Sidebar({ open, setOpen }) {
 
 
             <NavLink className={({ isActive }) => `sid-menu ${isActive ? 'active' : ''}`} to="/DayEndReport">
-              <FaChartBar className="sid-icon" /> Slt.. Report
+              <FaChartBar className="sid-icon" /> Day End Report
             </NavLink>
           </div>
         )}
@@ -198,21 +196,21 @@ function Sidebar({ open, setOpen }) {
         {ShowTransaction && (
           <div className="sid-submenu-container">
             <NavLink className={({ isActive }) => `sid-menu ${isActive ? 'active' : ''}`} to="/VendorMaster">
-              <FaTruck className="sid-icon" /> VendorMaster
+              <FaBox className="sid-icon" /> VendorMaster
             </NavLink>
 
             <NavLink className={({ isActive }) => `sid-menu ${isActive ? 'active' : ''}`} to="/Inventory">
-              <FaWarehouse className="sid-icon" /> Inventory
+              <FaBox className="sid-icon" /> Inventory
             </NavLink>
             <NavLink className={({ isActive }) => `sid-menu ${isActive ? 'active' : ''}`} to="/StockPage">
-              <FaExchangeAlt className="sid-icon" /> Stock Transaction
+              <FaBox className="sid-icon" /> Stock Transaction
             </NavLink>
 
           </div>
         )}
 
         <div className="sid-menu" onClick={() => setShowPromotions(!ShowPromotions)}>
-          <FaBullseye className="sid-icon" /> Promotions
+          <FaTag className="sid-icon" /> Promotions
         </div>
 
         {ShowPromotions && (
@@ -254,6 +252,12 @@ function Sidebar({ open, setOpen }) {
             <NavLink className={({ isActive }) => `sid-menu ${isActive ? 'active' : ''}`} to="/ServiceMaster">
               <FaBarcode className="sid-icon" /> Server Master
             </NavLink>
+            <NavLink className={({ isActive }) => `sid-menu ${isActive ? 'active' : ''}`} to="/MemberMaster">
+              <FaUsers className="sid-icon" /> Member Master
+            </NavLink>
+            <NavLink className={({ isActive }) => `sid-menu ${isActive ? 'active' : ''}`} to="/WaiterOrders">
+              <FaUserShield className="sid-icon" /> Waiter Orders
+            </NavLink>
           </div>
         )}
 
@@ -264,56 +268,47 @@ function Sidebar({ open, setOpen }) {
 
         {showSetup && (
           <div className="sid-submenu-container">
-            {/* <NavLink className={({ isActive }) => `sid-menu ${isActive ? 'active' : ''}`} to="/QRCode">
-              <FaQrcode className="sid-icon" /> QRCode
-            </NavLink> */}
+            <NavLink className={({ isActive }) => `sid-menu ${isActive ? 'active' : ''}`} to="/QRCode">
+              <FaBuilding className="sid-icon" /> QRCode
+            </NavLink>
             <NavLink className={({ isActive }) => `sid-menu ${isActive ? 'active' : ''}`} to="/Organization">
               <FaBuilding className="sid-icon" /> Organization
             </NavLink>
             <NavLink className={({ isActive }) => `sid-menu ${isActive ? 'active' : ''}`} to="/TableMaster">
-              <FaTable className="sid-icon" /> Table Master
+              <FaBarcode className="sid-icon" /> Table Master
             </NavLink>
             <div
               className="sid-menu"
-              onClick={() => {
-                setProtectedRoute("/DishOrderItemShare");
-                setShowTargetModal(true);
-              }}
+              onClick={() => setShowTargetModal(true)}
             >
-              <FaBullseye className="sid-icon" /> Target
+              <BsTerminal className="sid-icon" /> Target
             </div>
-            {/* <NavLink className={({ isActive }) => `sid-menu ${isActive ? 'active' : ''}`} to="/Terminal">
-              <FaDesktop className="sid-icon" /> Terminal
-            </NavLink> */}
-            <div
-              className="sid-menu"
-              onClick={() => {
-                setProtectedRoute("/Paymode");
-                setShowTargetModal(true);
-              }}
-            >
-              <FaCreditCard className="sid-icon" /> Paymode
-            </div>
-            {/* <NavLink className={({ isActive }) => `sid-menu ${isActive ? 'active' : ''}`} to="/PickList">
+            <NavLink className={({ isActive }) => `sid-menu ${isActive ? 'active' : ''}`} to="/Terminal">
+              <BsTerminal className="sid-icon" /> Terminal
+            </NavLink>
+            <NavLink className={({ isActive }) => `sid-menu ${isActive ? 'active' : ''}`} to="/Paymode">
+              <FaMoneyBillWave className="sid-icon" /> Paymode
+            </NavLink>
+            <NavLink className={({ isActive }) => `sid-menu ${isActive ? 'active' : ''}`} to="/PickList">
               <MdListAlt className="sid-icon" /> PickList
-            </NavLink> */}
+            </NavLink>
             <NavLink className={({ isActive }) => `sid-menu ${isActive ? 'active' : ''}`} to="/EmailSettings">
               <MdEmail className="sid-icon" /> EmailSettings
             </NavLink>
-            {/* <NavLink className={({ isActive }) => `sid-menu ${isActive ? 'active' : ''}`} to="/FireCourseForm">
+            <NavLink className={({ isActive }) => `sid-menu ${isActive ? 'active' : ''}`} to="/FireCourseForm">
               <FaFire className="sid-icon" /> FireCourseForm
-            </NavLink> */}
+            </NavLink>
             <NavLink className={({ isActive }) => `sid-menu ${isActive ? 'active' : ''}`} to="/PriceList">
               <FaDollarSign className="sid-icon" /> PriceList
             </NavLink>
-            {/* <NavLink className={({ isActive }) => `sid-menu ${isActive ? 'active' : ''}`} to="/PrinterModal">
+            <NavLink className={({ isActive }) => `sid-menu ${isActive ? 'active' : ''}`} to="/PrinterModal">
               <FaPrint className="sid-icon" /> PrinterModal
-            </NavLink> */}
+            </NavLink>
             <NavLink className={({ isActive }) => `sid-menu ${isActive ? 'active' : ''}`} to="/Barcode">
               <FaBarcode className="sid-icon" /> Barcode
             </NavLink>
             <NavLink className={({ isActive }) => `sid-menu ${isActive ? 'active' : ''}`} to="/CancelRemarkModal">
-              <FaBan className="sid-icon" /> Cancel Remark
+              <FaBan className="sid-icon" /> CancelRemarkModal
             </NavLink>
           </div>
         )}
