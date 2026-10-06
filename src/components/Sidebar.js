@@ -157,6 +157,14 @@ function Sidebar({ open, setOpen }) {
               <FaHamburger className="sid-icon" /> Dish Migration
             </NavLink>
 
+            <NavLink className={({ isActive }) => `sid-menu ${isActive ? 'active' : ''}`} to="/DishGroupMigration">
+              <FaHamburger className="sid-icon" /> Dish Group Migration
+            </NavLink>
+
+
+            <NavLink className={({ isActive }) => `sid-menu ${isActive ? 'active' : ''}`} to="/CategoryMigration">
+              <FaHamburger className="sid-icon" /> Category Migration
+            </NavLink>
 
             <NavLink className={({ isActive }) => `sid-menu ${isActive ? 'active' : ''}`} to="/ComboGroupMaster">
               <FaHamburger className="sid-icon" /> Combo Group Master

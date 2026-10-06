@@ -1,0 +1,369 @@
+.dishgroup-migration-page {
+    width: 100%;
+    min-height: 100vh;
+    padding: 25px;
+    background: #f5f7fb;
+    box-sizing: border-box;
+}
+
+/* =====================================================
+   HEADER
+===================================================== */
+
+.dishgroup-migration-header {
+    width: 100%;
+    margin-bottom: 25px;
+}
+
+.dishgroup-migration-header h1 {
+    margin: 0;
+    font-size: 28px;
+    font-weight: 700;
+    color: #1f2937;
+}
+
+.dishgroup-migration-header p {
+    margin: 6px 0 0;
+    color: #6b7280;
+    font-size: 14px;
+}
+
+/* =====================================================
+   MAIN BOX
+===================================================== */
+
+.dishgroup-migration-box {
+    width: 100%;
+    max-width: 1500px;
+    margin: auto;
+    background: #ffffff;
+    border-radius: 14px;
+    padding: 25px;
+    box-sizing: border-box;
+    box-shadow: 0 3px 18px rgba(0, 0, 0, 0.06);
+}
+
+/* =====================================================
+   SECTION
+===================================================== */
+
+.migration-section {
+    padding: 22px 0;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.section-title {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 18px;
+}
+
+.section-title h3 {
+    margin: 0;
+    font-size: 17px;
+    color: #1f2937;
+}
+
+.section-title p {
+    margin: 4px 0 0;
+    color: #6b7280;
+    font-size: 13px;
+}
+
+.step-number {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: #2563eb;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+}
+
+/* =====================================================
+   BUTTONS
+===================================================== */
+
+.migration-btn {
+    border: none;
+    border-radius: 8px;
+    padding: 11px 18px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.2s ease;
+}
+
+.migration-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+}
+
+.migration-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.template-btn {
+    background: #2563eb;
+    color: #ffffff;
+}
+
+.upload-btn {
+    background: #059669;
+    color: #ffffff;
+}
+
+.post-btn {
+    min-width: 170px;
+    background: #7c3aed;
+    color: #ffffff;
+}
+
+/* =====================================================
+   UPLOAD
+===================================================== */
+
+.upload-row {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.upload-row input[type="file"] {
+    min-width: 280px;
+    padding: 9px;
+    border: 1px solid #d1d5db;
+    border-radius: 7px;
+    background: #ffffff;
+}
+
+.selected-file {
+    margin-top: 12px;
+    padding: 10px 14px;
+    background: #f3f4f6;
+    border-radius: 7px;
+    color: #4b5563;
+    font-size: 13px;
+}
+
+.selected-file strong {
+    margin-left: 5px;
+    color: #111827;
+}
+
+/* =====================================================
+   VALIDATION
+===================================================== */
+
+.validation-section {
+    padding: 25px 0;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.validation-section h3 {
+    margin: 0 0 18px;
+    color: #1f2937;
+}
+
+.validation-summary {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+}
+
+.summary-card {
+    padding: 18px;
+    border-radius: 10px;
+    background: #f3f4f6;
+    border: 1px solid #e5e7eb;
+}
+
+.summary-card span {
+    display: block;
+    color: #6b7280;
+    font-size: 13px;
+    margin-bottom: 7px;
+}
+
+.summary-card strong {
+    font-size: 25px;
+    color: #111827;
+}
+
+.valid-card {
+    background: #ecfdf5;
+    border-color: #a7f3d0;
+}
+
+.valid-card strong {
+    color: #059669;
+}
+
+.error-card {
+    background: #fef2f2;
+    border-color: #fecaca;
+}
+
+.error-card strong {
+    color: #dc2626;
+}
+
+/* =====================================================
+   PREVIEW
+===================================================== */
+
+.preview-section {
+    padding: 25px 0;
+}
+
+.preview-header {
+    margin-bottom: 15px;
+}
+
+.preview-header h3 {
+    margin: 0;
+    color: #1f2937;
+}
+
+.preview-header p {
+    margin: 5px 0 0;
+    font-size: 13px;
+    color: #6b7280;
+}
+
+.table-container {
+    width: 100%;
+    overflow-x: auto;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+}
+
+.migration-table {
+    width: 100%;
+    min-width: 1300px;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.migration-table th {
+    background: #f8fafc;
+    color: #374151;
+    font-weight: 700;
+    padding: 12px 10px;
+    border-bottom: 1px solid #e5e7eb;
+    text-align: left;
+    white-space: nowrap;
+}
+
+.migration-table td {
+    padding: 11px 10px;
+    border-bottom: 1px solid #f1f5f9;
+    color: #4b5563;
+    white-space: nowrap;
+}
+
+.migration-table tbody tr:hover {
+    background: #f8fafc;
+}
+
+.row-error {
+    background: #fff7f7;
+}
+
+.row-valid {
+    background: #ffffff;
+}
+
+.guid-cell {
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.remark-cell {
+    min-width: 200px;
+    white-space: normal !important;
+}
+
+/* =====================================================
+   STATUS
+===================================================== */
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.badge-valid {
+    background: #dcfce7;
+    color: #15803d;
+}
+
+.badge-error {
+    background: #fee2e2;
+    color: #dc2626;
+}
+
+/* =====================================================
+   ACTION
+===================================================== */
+
+.migration-actions {
+    padding-top: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 15px;
+}
+
+.no-records-hint {
+    color: #9ca3af;
+    font-size: 13px;
+}
+
+/* =====================================================
+   RESPONSIVE
+===================================================== */
+
+@media (max-width: 768px) {
+
+    .dishgroup-migration-page {
+        padding: 15px;
+    }
+
+    .dishgroup-migration-box {
+        padding: 18px;
+    }
+
+    .validation-summary {
+        grid-template-columns: 1fr;
+    }
+
+    .upload-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .upload-row input[type="file"] {
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .migration-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .post-btn {
+        width: 100%;
+    }
+}

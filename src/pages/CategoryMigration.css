@@ -1,0 +1,596 @@
+/* =====================================================
+   CATEGORY MIGRATION PAGE
+===================================================== */
+
+.category-migration-page {
+    width: 100%;
+    min-height: 100vh;
+    padding: 25px;
+    background: #f5f7fb;
+    box-sizing: border-box;
+}
+
+
+/* =====================================================
+   HEADER
+===================================================== */
+
+.category-migration-header {
+    width: 100%;
+    margin-bottom: 25px;
+}
+
+.category-migration-header h1 {
+    margin: 0;
+    font-size: 28px;
+    font-weight: 700;
+    color: #1f2937;
+}
+
+.category-migration-header p {
+    margin: 6px 0 0;
+    color: #6b7280;
+    font-size: 14px;
+}
+
+
+/* =====================================================
+   MAIN BOX
+===================================================== */
+
+.category-migration-box {
+    width: 100%;
+    max-width: 1500px;
+    margin: auto;
+    background: #ffffff;
+    border-radius: 14px;
+    padding: 25px;
+    box-sizing: border-box;
+    box-shadow: 0 3px 18px rgba(0, 0, 0, 0.06);
+}
+
+
+/* =====================================================
+   MIGRATION SECTION
+===================================================== */
+
+.migration-section {
+    padding: 22px 0;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.section-title {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 18px;
+}
+
+.section-title h3 {
+    margin: 0;
+    font-size: 17px;
+    color: #1f2937;
+}
+
+.section-title p {
+    margin: 4px 0 0;
+    color: #6b7280;
+    font-size: 13px;
+}
+
+
+/* =====================================================
+   STEP NUMBER
+===================================================== */
+
+.step-number {
+    width: 34px;
+    height: 34px;
+    min-width: 34px;
+    border-radius: 50%;
+    background: #2563eb;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 14px;
+}
+
+
+/* =====================================================
+   BUTTON
+===================================================== */
+
+.migration-btn {
+    border: none;
+    border-radius: 8px;
+    padding: 11px 18px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.migration-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+}
+
+.migration-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+
+/* =====================================================
+   TEMPLATE BUTTON
+===================================================== */
+
+.template-btn {
+    background: #2563eb;
+    color: #ffffff;
+}
+
+.template-btn:hover:not(:disabled) {
+    background: #1d4ed8;
+}
+
+
+/* =====================================================
+   UPLOAD BUTTON
+===================================================== */
+
+.upload-btn {
+    background: #059669;
+    color: #ffffff;
+}
+
+.upload-btn:hover:not(:disabled) {
+    background: #047857;
+}
+
+
+/* =====================================================
+   POST BUTTON
+===================================================== */
+
+.post-btn {
+    min-width: 170px;
+    background: #7c3aed;
+    color: #ffffff;
+}
+
+.post-btn:hover:not(:disabled) {
+    background: #6d28d9;
+}
+
+
+/* =====================================================
+   UPLOAD AREA
+===================================================== */
+
+.upload-row {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.upload-row input[type="file"] {
+    min-width: 280px;
+    padding: 9px;
+    border: 1px solid #d1d5db;
+    border-radius: 7px;
+    background: #ffffff;
+    font-size: 13px;
+    color: #374151;
+    box-sizing: border-box;
+}
+
+.upload-row input[type="file"]:focus {
+    outline: none;
+    border-color: #2563eb;
+}
+
+
+/* =====================================================
+   SELECTED FILE
+===================================================== */
+
+.selected-file {
+    margin-top: 12px;
+    padding: 10px 14px;
+    background: #f3f4f6;
+    border-radius: 7px;
+    color: #4b5563;
+    font-size: 13px;
+}
+
+.selected-file strong {
+    margin-left: 5px;
+    color: #111827;
+}
+
+
+/* =====================================================
+   VALIDATION SECTION
+===================================================== */
+
+.validation-section {
+    padding: 25px 0;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.validation-section h3 {
+    margin: 0 0 18px;
+    color: #1f2937;
+    font-size: 17px;
+}
+
+
+/* =====================================================
+   VALIDATION SUMMARY
+===================================================== */
+
+.validation-summary {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+}
+
+.summary-card {
+    padding: 18px;
+    border-radius: 10px;
+    background: #f3f4f6;
+    border: 1px solid #e5e7eb;
+}
+
+.summary-card span {
+    display: block;
+    color: #6b7280;
+    font-size: 13px;
+    margin-bottom: 7px;
+}
+
+.summary-card strong {
+    font-size: 25px;
+    color: #111827;
+}
+
+.valid-card {
+    background: #ecfdf5;
+    border-color: #a7f3d0;
+}
+
+.valid-card strong {
+    color: #059669;
+}
+
+.error-card {
+    background: #fef2f2;
+    border-color: #fecaca;
+}
+
+.error-card strong {
+    color: #dc2626;
+}
+
+
+/* =====================================================
+   PREVIEW SECTION
+===================================================== */
+
+.preview-section {
+    padding: 25px 0;
+}
+
+.preview-header {
+    margin-bottom: 15px;
+}
+
+.preview-header h3 {
+    margin: 0;
+    color: #1f2937;
+    font-size: 17px;
+}
+
+.preview-header p {
+    margin: 5px 0 0;
+    font-size: 13px;
+    color: #6b7280;
+}
+
+
+/* =====================================================
+   TABLE CONTAINER
+===================================================== */
+
+.table-container {
+    width: 100%;
+    overflow-x: auto;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+}
+
+
+/* =====================================================
+   MIGRATION TABLE
+===================================================== */
+
+.migration-table {
+    width: 100%;
+    min-width: 1100px;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.migration-table th {
+    background: #f8fafc;
+    color: #374151;
+    font-weight: 700;
+    padding: 12px 10px;
+    border-bottom: 1px solid #e5e7eb;
+    text-align: left;
+    white-space: nowrap;
+}
+
+.migration-table td {
+    padding: 11px 10px;
+    border-bottom: 1px solid #f1f5f9;
+    color: #4b5563;
+    white-space: nowrap;
+}
+
+.migration-table tbody tr:hover {
+    background: #f8fafc;
+}
+
+.row-error {
+    background: #fff7f7;
+}
+
+.row-valid {
+    background: #ffffff;
+}
+
+
+/* =====================================================
+   REMARK
+===================================================== */
+
+.remark-cell {
+    min-width: 250px;
+    max-width: 400px;
+    white-space: normal !important;
+    color: #dc2626 !important;
+    line-height: 1.5;
+}
+
+
+/* =====================================================
+   STATUS BADGE
+===================================================== */
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.badge-valid {
+    background: #dcfce7;
+    color: #15803d;
+}
+
+.badge-error {
+    background: #fee2e2;
+    color: #dc2626;
+}
+
+
+/* =====================================================
+   ACTION AREA
+===================================================== */
+
+.migration-actions {
+    padding-top: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 15px;
+}
+
+.no-records-hint {
+    color: #9ca3af;
+    font-size: 13px;
+}
+
+.error-hint {
+    color: #dc2626;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+
+/* =====================================================
+   TABLE COLUMN WIDTHS
+===================================================== */
+
+.migration-table th:nth-child(1),
+.migration-table td:nth-child(1) {
+    width: 60px;
+}
+
+.migration-table th:nth-child(2),
+.migration-table td:nth-child(2) {
+    min-width: 110px;
+}
+
+.migration-table th:nth-child(3),
+.migration-table td:nth-child(3) {
+    min-width: 200px;
+}
+
+.migration-table th:nth-child(4),
+.migration-table td:nth-child(4) {
+    min-width: 120px;
+}
+
+.migration-table th:nth-child(5),
+.migration-table td:nth-child(5),
+.migration-table th:nth-child(6),
+.migration-table td:nth-child(6),
+.migration-table th:nth-child(7),
+.migration-table td:nth-child(7),
+.migration-table th:nth-child(8),
+.migration-table td:nth-child(8),
+.migration-table th:nth-child(9),
+.migration-table td:nth-child(9),
+.migration-table th:nth-child(10),
+.migration-table td:nth-child(10) {
+    text-align: center;
+    min-width: 100px;
+}
+
+
+/* =====================================================
+   SCROLLBAR
+===================================================== */
+
+.table-container::-webkit-scrollbar {
+    height: 8px;
+}
+
+.table-container::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 10px;
+}
+
+.table-container::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 10px;
+}
+
+.table-container::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+
+/* =====================================================
+   RESPONSIVE
+===================================================== */
+
+@media (max-width: 1024px) {
+
+    .category-migration-page {
+        padding: 18px;
+    }
+
+    .category-migration-box {
+        padding: 20px;
+    }
+
+    .validation-summary {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+
+@media (max-width: 768px) {
+
+    .category-migration-page {
+        padding: 15px;
+    }
+
+    .category-migration-box {
+        padding: 18px;
+    }
+
+    .category-migration-header h1 {
+        font-size: 24px;
+    }
+
+    .validation-summary {
+        grid-template-columns: 1fr;
+    }
+
+    .upload-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .upload-row input[type="file"] {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .upload-btn {
+        width: 100%;
+    }
+
+    .migration-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .post-btn {
+        width: 100%;
+    }
+
+    .section-title {
+        align-items: flex-start;
+    }
+
+    .step-number {
+        margin-top: 2px;
+    }
+}
+
+
+@media (max-width: 480px) {
+
+    .category-migration-page {
+        padding: 10px;
+    }
+
+    .category-migration-box {
+        padding: 14px;
+        border-radius: 10px;
+    }
+
+    .category-migration-header h1 {
+        font-size: 21px;
+    }
+
+    .category-migration-header p {
+        font-size: 12px;
+    }
+
+    .section-title {
+        gap: 10px;
+    }
+
+    .section-title h3 {
+        font-size: 15px;
+    }
+
+    .section-title p {
+        font-size: 12px;
+    }
+
+    .migration-btn {
+        width: 100%;
+    }
+
+    .upload-row input[type="file"] {
+        font-size: 12px;
+    }
+
+    .summary-card strong {
+        font-size: 22px;
+    }
+}

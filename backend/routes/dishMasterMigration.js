@@ -133,6 +133,16 @@ router.post("/save", async (req, res) => {
                     sql.DateTime,
                     new Date()
                 )
+                .input(
+                    "Remark",
+                    sql.NVarChar(1000),
+                    row.Remark || null
+                )
+                .input(
+                    "Status",
+                    sql.VarChar(20),
+                    row.Status || "PENDING"
+                )
                 .query(`
           INSERT INTO DishMasterMigrationLine
           (
@@ -163,8 +173,8 @@ router.post("/save", async (req, res) => {
             @CurrentCost,
             @DishGroupId,
             @isServiceCharge,
-            NULL,
-            'PENDING',
+            @Remark,
+            @Status,
             @CreatedBy,
             @CreatedOn
           )
@@ -188,6 +198,68 @@ router.post("/save", async (req, res) => {
         res.status(500).json({
             success: false,
             message: err.message || "Migration save failed"
+        });
+    }
+});
+
+// =====================================================
+// POST DISH MASTER MIGRATION
+// =====================================================
+router.post("/post/:migrationId", async (req, res) => {
+    try {
+
+        const { migrationId } = req.params;
+        const { userId } = req.body;
+
+        if (!migrationId) {
+            return res.status(400).json({
+                success: false,
+                message: "MigrationId is required"
+            });
+        }
+
+        if (!userId) {
+            return res.status(400).json({
+                success: false,
+                message: "UserId is required"
+            });
+        }
+
+        const pool = await poolPromise;
+
+        // ==========================================
+        // CALL STORED PROCEDURE
+        // ==========================================
+
+        const result = await pool.request()
+            .input(
+                "MigrationId",
+                sql.UniqueIdentifier,
+                migrationId
+            )
+            .input(
+                "PostedBy",
+                sql.UniqueIdentifier,
+                userId
+            )
+            .execute("sp_PostDishMasterMigration");
+
+        return res.json({
+            success: true,
+            message: "Dish Master migration posted successfully",
+            data: result.recordset
+        });
+
+    } catch (err) {
+
+        console.error(
+            "DishMaster Migration Post Error:",
+            err
+        );
+
+        return res.status(500).json({
+            success: false,
+            message: err.message || "Migration post failed"
         });
     }
 });

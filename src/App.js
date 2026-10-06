@@ -10,6 +10,7 @@ import DishGroup from "./pages/DishGroup";
 import Dish from "./pages/Dish";
 
 import DishMasterMigration from "./pages/DishMasterMigration";
+import CategoryMigration from "./pages/CategoryMigration";
 
 import ComboGroupMaster from "./pages/ComboGroupMaster";
 import Modifier from "./pages/Modifier";
@@ -45,6 +46,9 @@ import ServerMaster from "./pages/ServerMaster";
 import TableMaster from "./pages/tablemaster";
 import Organization from "./pages/Organization";
 import DishOrderItemShare from "./pages/DishOrderItemShare";
+
+import DishGroupMigration from "./pages/DishGroupMigration";
+
 import QRCode from "./pages/QRCode";
 import PromoCodeMaster from "./pages/PromoCodeMaster";
 import QR from "./pages/qr";
@@ -71,6 +75,8 @@ function Layout() {
           <Route path="/DishGroup" element={<DishGroup />} />
           <Route path="/Dish" element={<Dish />} />
           <Route path="/DishMasterMigration" element={<DishMasterMigration />} />
+          <Route path="/DishGroupMigration" element={<DishGroupMigration />} />
+          <Route path="/CategoryMigration" element={<CategoryMigration />} />
           <Route path="/ComboGroupMaster" element={<ComboGroupMaster />} />
           <Route path="/Modifier" element={<Modifier />} />
           <Route path="/Inventory" element={<Inventory />} />

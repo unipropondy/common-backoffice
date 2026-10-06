@@ -11,23 +11,52 @@ function DishMasterMigration() {
     const [summary, setSummary] = useState({ total: 0, valid: 0, error: 0 });
     const [loading, setLoading] = useState(false);
     const [posted, setPosted] = useState(false);
+    const [migrationId, setMigrationId] = useState(null);
 
     // ─────────────────────────────────────────────
     // 1. DOWNLOAD TEMPLATE
     // ─────────────────────────────────────────────
-    const downloadTemplate = () => {
-        const headers = ["DishCode", "Name", "IsActive", "SordCode", "CurrentCost", "DishGroupId", "isServiceCharge"];
-        const sampleRow = ["001", "Sample Dish Name", 1, 1, 100.00, "", 0];
+    const downloadTemplate = async () => {
+        try {
+            // 1. Create DishMaster Sheet
+            const headers = ["DishCode", "Name", "IsActive", "SordCode", "CurrentCost", "DishGroupId", "isServiceCharge"];
+            const sampleRow = ["001", "Sample Dish Name", 1, 1, 100.00, "", 0];
 
-        const ws = XLSX.utils.aoa_to_sheet([headers, sampleRow]);
-        ws["!cols"] = [
-            { wch: 12 }, { wch: 30 }, { wch: 10 },
-            { wch: 10 }, { wch: 14 }, { wch: 38 }, { wch: 16 }
-        ];
+            const wsMaster = XLSX.utils.aoa_to_sheet([headers, sampleRow]);
+            wsMaster["!cols"] = [
+                { wch: 12 }, { wch: 30 }, { wch: 10 },
+                { wch: 10 }, { wch: 14 }, { wch: 38 }, { wch: 16 }
+            ];
 
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "DishMaster");
-        XLSX.writeFile(wb, "DishMaster_Import_Template.xlsx");
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, wsMaster, "DishMaster");
+
+            // 2. Fetch DishGroupMaster Data & Create Second Sheet
+            const res = await axios.get(`${BASE_URL}/dishgroup`);
+            const dishGroups = res.data;
+
+            if (dishGroups && dishGroups.length > 0) {
+                // Only show the requested columns
+                const filteredGroups = dishGroups.map(group => ({
+                    DishGroupId: group.DishGroupId,
+                    DishGroupName: group.DishGroupName,
+                    CategoryName: group.CategoryName
+                }));
+                const wsGroup = XLSX.utils.json_to_sheet(filteredGroups);
+                XLSX.utils.book_append_sheet(wb, wsGroup, "DishGroupMaster");
+            } else {
+                // If no records, just create a blank sheet with a placeholder header
+                const wsGroup = XLSX.utils.aoa_to_sheet([["DishGroupId", "DishGroupName", "CategoryName"]]);
+                XLSX.utils.book_append_sheet(wb, wsGroup, "DishGroupMaster");
+            }
+
+            // 3. Download the file
+            XLSX.writeFile(wb, "DishMaster_Import_Template.xlsx");
+
+        } catch (error) {
+            console.error("Error generating template:", error);
+            alert("Failed to fetch Dish Group data for the template.");
+        }
     };
 
     // ─────────────────────────────────────────────
@@ -54,7 +83,7 @@ function DishMasterMigration() {
 
         const reader = new FileReader();
 
-        reader.onload = (e) => {
+        reader.onload = async (e) => {
             try {
                 const data = new Uint8Array(e.target.result);
                 const workbook = XLSX.read(data, { type: "array" });
@@ -62,7 +91,7 @@ function DishMasterMigration() {
                 // Read first sheet
                 const sheetName = workbook.SheetNames[0];
                 const sheet = workbook.Sheets[sheetName];
-                const rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+                const rows = XLSX.utils.sheet_to_json(sheet, { defval: "", raw: false });
 
                 if (rows.length === 0) {
                     alert("The Excel file has no data rows.");
@@ -75,8 +104,14 @@ function DishMasterMigration() {
                 const validated = rows.map((row, idx) => {
                     const remarks = [];
 
+                    let parsedDishCode = String(row.DishCode || "").trim();
+                    // If the user typed 1 in Excel, pad it to 001 to match previous requirements
+                    if (parsedDishCode && !isNaN(parsedDishCode) && parsedDishCode.length < 3) {
+                        parsedDishCode = parsedDishCode.padStart(3, '0');
+                    }
+
                     // Required: DishCode
-                    if (!row.DishCode || String(row.DishCode).trim() === "") {
+                    if (!parsedDishCode || parsedDishCode === "") {
                         remarks.push("DishCode is required");
                     }
 
@@ -96,7 +131,7 @@ function DishMasterMigration() {
 
                     return {
                         RowNo: idx + 2,   // +2 because row 1 = header
-                        DishCode: String(row.DishCode || "").trim(),
+                        DishCode: parsedDishCode,
                         Name: String(row.Name || "").trim(),
                         IsActive: isActive === 1 ? 1 : 0,
                         SordCode: Number(row.SordCode) || 0,
@@ -139,17 +174,43 @@ function DishMasterMigration() {
 
             const userId = localStorage.getItem("userId");
 
-            const res = await axios.post(`${BASE_URL}/dishmaster-migration/save`, {
-                fileName: selectedFile?.name || "",
-                records: validRecords,
-                userId: userId || null
-            });
+            if (!userId) {
+                alert("UserId not found. Please login again.");
+                return;
+            }
 
-            if (res.data?.success) {
+            // Step 1: Save Excel records to DB
+            const saveRes = await axios.post(
+                `${BASE_URL}/api/dishmaster-migration/save`,
+                {
+                    fileName: selectedFile?.name || "",
+                    records: validRecords,
+                    userId: userId
+                }
+            );
+
+            if (!saveRes.data?.success || !saveRes.data?.migrationId) {
+                alert(saveRes.data?.message || "Failed to save migration records to database.");
+                setLoading(false);
+                return;
+            }
+
+            const currentMigrationId = saveRes.data.migrationId;
+            setMigrationId(currentMigrationId);
+
+            // Step 2: Post the migration via Stored Procedure
+            const postRes = await axios.post(
+                `${BASE_URL}/api/dishmaster-migration/post/${currentMigrationId}`,
+                {
+                    userId: userId
+                }
+            );
+
+            if (postRes.data?.success) {
                 alert(`✅ ${validRecords.length} record(s) inserted successfully!`);
                 setPosted(true);
             } else {
-                alert("Insert failed: " + (res.data?.message || "Unknown error"));
+                alert("Insert failed: " + (postRes.data?.message || "Unknown error"));
             }
 
         } catch (err) {

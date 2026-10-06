@@ -48,9 +48,17 @@ app.use("/api", dashboardRoutes);
 const dishMasterMigrationRoutes =
   require("./routes/dishMasterMigration");
 
+const dishGroupMigrationRoutes =
+  require("./routes/dishgroup-migration");
+
 app.use(
   "/api/dishmaster-migration",
   dishMasterMigrationRoutes
+);
+
+app.use(
+  "/api/dishgroup-migration",
+  dishGroupMigrationRoutes
 );
 const rewardRoutes = require("./routes/rewardRoutes");
 
@@ -69,7 +77,13 @@ app.use("/api/member", memberMasterRoutes);
 const waiterOrdersRoutes = require("./routes/waiterOrdersRoutes");
 app.use("/api/waiter-orders", waiterOrdersRoutes);
 
+const categoryMigrationRoutes =
+  require("./routes/categoryMigration");
 
+app.use(
+  "/api/category-migration",
+  categoryMigrationRoutes
+);
 
 const promoCodeRoute = require("./routes/promoCodeRoute");
 
