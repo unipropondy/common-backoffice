@@ -192,6 +192,10 @@ function Sidebar({ open, setOpen }) {
             </NavLink>
 
 
+            <NavLink className={({ isActive }) => `sid-menu ${isActive ? 'active' : ''}`} to="/UserSalesReport">
+              <FaChartBar className="sid-icon" /> User Sales Report
+            </NavLink>
+
             <NavLink className={({ isActive }) => `sid-menu ${isActive ? 'active' : ''}`} to="/SalesReport">
               <FaChartBar className="sid-icon" /> Sales Report
             </NavLink>

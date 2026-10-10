@@ -16,6 +16,7 @@ import ComboGroupMaster from "./pages/ComboGroupMaster";
 import Modifier from "./pages/Modifier";
 import Inventory from "./pages/Inventory";
 import Settlement from "./pages/Settlement";
+import UserSalesReport from "./pages/UserSalesReport";
 import SalesReport from "./pages/SalesReport";
 import DayEndReport from "./pages/DayEndReport";
 import CustomerList from "./pages/CustomerList";
@@ -81,6 +82,8 @@ function Layout() {
           <Route path="/Modifier" element={<Modifier />} />
           <Route path="/Inventory" element={<Inventory />} />
           <Route path="/Settlement" element={<Settlement />} />
+
+          <Route path="/UserSalesReport" element={<UserSalesReport />} />
           <Route path="/SalesReport" element={<SalesReport />} />
           <Route path="/DayEndReport" element={<DayEndReport />} />
           <Route path="/CustomerList" element={<CustomerList />} />

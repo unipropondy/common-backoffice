@@ -85,6 +85,10 @@ app.use(
   categoryMigrationRoutes
 );
 
+const userSalesRoutes = require("./routes/userSales");
+
+app.use("/api/user-sales", userSalesRoutes);
+
 const promoCodeRoute = require("./routes/promoCodeRoute");
 
 app.use("/api/promocode", promoCodeRoute);
