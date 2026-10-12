@@ -1,8 +1,9 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import axios from "axios";
 import "./DishGroup.css";
 
 import { BASE_URL } from "../config/api";
+import { getLoggedInUserId } from "../utils/audit";
 
 function DishGroup() {
 
@@ -19,7 +20,6 @@ function DishGroup() {
   const [showCategoryModal, setShowCategoryModal] = useState(false);
 
   const [image, setImage] = useState(null);
-  const [displayName, setDisplayName] = useState(true);
 
   const [bgColor, setBgColor] = useState("#2e7d32");
   const [textColor, setTextColor] = useState("#ffffff");
@@ -30,11 +30,6 @@ function DishGroup() {
   const [kitchens, setKitchens] = useState([]);
   const [selectedKitchens, setSelectedKitchens] = useState([]);
   const [loading, setLoading] = useState(false);
-
-  const fileInputRef = useRef(null);
-  const bgColorRef = useRef(null);
-  const textColorRef = useRef(null);
-  const [editingIndex, setEditingIndex] = useState(null);
 
   const [form, setForm] = useState({
     DishGroupId: "",
@@ -97,6 +92,29 @@ function DishGroup() {
     });
   };
 
+  const generateDishGroupCode = (list = entries) => {
+    const arr = Array.isArray(list) ? list : [];
+    let maxNum = 0;
+    let maxPadLength = 3;
+    arr.forEach((row) => {
+      const codeStr = String(row.DishGroupCode || "").trim();
+      if (!codeStr) return;
+      if (/^\d+$/.test(codeStr)) {
+        const num = parseInt(codeStr, 10);
+        if (!Number.isNaN(num) && num > maxNum) maxNum = num;
+        if (codeStr.length > maxPadLength) maxPadLength = codeStr.length;
+      } else {
+        const m = codeStr.match(/\d+/);
+        if (m) {
+          const num = parseInt(m[0], 10);
+          if (!Number.isNaN(num) && num > maxNum) maxNum = num;
+          if (m[0].length > maxPadLength) maxPadLength = m[0].length;
+        }
+      }
+    });
+    return String(maxNum + 1).padStart(maxPadLength, "0");
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -113,19 +131,21 @@ function DishGroup() {
     try {
       setLoading(true);
       const formData = new FormData();
-
-      const userId = localStorage.getItem("userId");
+      const userId = getLoggedInUserId();
+      const selectedDb = localStorage.getItem("selected_db");
 
       console.log("Logged UserId:", userId);
-
-      formData.append("DishGroupId", form.DishGroupId);
+      console.log("Selected DB:", selectedDb);
 
       if (form.DishGroupId) {
-        // UPDATE
+        formData.append("DishGroupId", form.DishGroupId);
         formData.append("ModifiedBy", userId);
       } else {
-        // INSERT
         formData.append("CreatedBy", userId);
+      }
+
+      if (selectedDb) {
+        formData.append("dbName", selectedDb);
       }
 
       formData.append("DishGroupCode", form.DishGroupCode);
@@ -161,19 +181,29 @@ function DishGroup() {
       console.log("CategoryId 👉", form.CategoryId);
       console.log("SortCode 👉", form.SortCode);
       console.log("KitchenSortCode 👉", form.KitchenSortCode);
+
       // 🔥 FINAL API CALL
-      await axios.post(`${BASE_URL}/dishgroup`, formData, {
-        headers: { "Content-Type": "multipart/form-data" }
-      });
+      const headers = {};
+      if (selectedDb) {
+        headers["X-Db-Name"] = selectedDb;
+      }
+      if (userId) {
+        headers["X-User-Id"] = userId;
+      }
 
-      alert("Saved!");
+      const res = await axios.post(`${BASE_URL}/dishgroup`, formData, { headers });
 
-      fetchDishGroup();
-      setShowModal(false);
+      if (res.status === 200 || res.status === 201) {
+        alert("Saved!");
+        await fetchDishGroup();
+        setShowModal(false);
+      } else {
+        alert(res.data?.message || "Save failed");
+      }
 
     } catch (err) {
-      console.log(err);
-      alert("Error");
+      console.error("DishGroup save error:", err);
+      alert(err.response?.data?.message || err.response?.data?.error || err.message || "Error");
     } finally {
       setLoading(false);  // 🔥 STOP LOADER
     }
@@ -275,8 +305,6 @@ function DishGroup() {
         );
       });
 
-    // setEditingIndex(index);
-    setEditingIndex(null);
     setShowModal(true);
   };
 
@@ -343,38 +371,43 @@ function DishGroup() {
           <button
             className="dg-new-btn"
             onClick={async () => {
-
+              let nextCode = "";
               try {
-                const res = await axios.get(`${BASE_URL}/dishgroup/nextcode`);
-
-                setForm({
-                  DishGroupId: "",
-                  DishGroupCode: res.data.code, // 🔥 AUTO NUMBER
-                  DishGroupName: "",
-                  ShortName: "",
-                  SortCode: "",
-                  KitchenSortCode: "",
-                  CategoryId: "",
-                  NameInOtherLanguage: "",
-                  ShowModifierTabOrder: "No",
-                  isActive: "No",
-                  IsPublished: "No",
-                  isDiscountAllowed: "No",
-                  isTaxAllowed: "No",
-                  isKitchenprint: "No",
-                  isServiceCharge: "No",
-                  isMemberSalesAllowed: "No"
+                const selectedDb = localStorage.getItem("selected_db");
+                const res = await axios.get(`${BASE_URL}/dishgroup/nextcode`, {
+                  headers: selectedDb ? { "X-Db-Name": selectedDb } : {}
                 });
-                setSelectedKitchens([]);   // ✅ RESET
-                setSelectedModifiers([]);  // ✅ RESET
-
-                setEditingIndex(null);
-                setShowModal(true);
-
+                nextCode = res.data?.code;
               } catch (err) {
                 console.log("CODE LOAD ERROR", err);
               }
 
+              if (!nextCode || entries.some(e => String(e.DishGroupCode).trim() === String(nextCode).trim())) {
+                nextCode = generateDishGroupCode(entries);
+              }
+
+              setForm({
+                DishGroupId: "",
+                DishGroupCode: nextCode,
+                DishGroupName: "",
+                ShortName: "",
+                SortCode: "",
+                KitchenSortCode: "",
+                CategoryId: "",
+                NameInOtherLanguage: "",
+                ShowModifierTabOrder: "No",
+                isActive: "No",
+                IsPublished: "No",
+                isDiscountAllowed: "No",
+                isTaxAllowed: "No",
+                isKitchenprint: "No",
+                isServiceCharge: "No",
+                isMemberSalesAllowed: "No"
+              });
+              setSelectedKitchens([]);
+              setSelectedModifiers([]);
+              setImage(null);
+              setShowModal(true);
             }}
           >
             New

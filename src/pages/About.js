@@ -1,8 +1,16 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import axios from "axios";
 import "./About.css";
 
 import { BASE_URL } from "../config/api";
+import { getLoggedInUserId } from "../utils/audit";
+
+const isValidGuid = (id) => {
+  return (
+    typeof id === "string" &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id.trim())
+  );
+};
 
 function About() {
 
@@ -15,7 +23,6 @@ function About() {
   const [activeTab, setActiveTab] = useState("category");
 
   const [image, setImage] = useState(null);
-  const fileInputRef = useRef(null);
 
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
@@ -23,8 +30,6 @@ function About() {
   const [bgColor, setBgColor] = useState("#000000");
   const [textColor, setTextColor] = useState("#ff0000");
 
-  const bgColorRef = useRef(null);
-  const textColorRef = useRef(null);
   const [modifiers, setModifiers] = useState([]);
   const [search, setSearch] = useState("");
   const [selectedModifiers, setSelectedModifiers] = useState([]);
@@ -125,9 +130,56 @@ function About() {
     fetchKitchen();
   }, []);
 
-  const generateCategoryCode = () => {
-    let next = entries.length + 1;
-    return String(next).padStart(4, "0");
+  const generateCategoryCode = (categoryList = entries) => {
+    const list = Array.isArray(categoryList) ? categoryList : [];
+
+    let maxNum = 0;
+    let maxPadLength = 3;
+
+    list.forEach((row) => {
+      const codeStr = String(row.CategoryCode || "").trim();
+      if (!codeStr) return;
+
+      if (/^\d+$/.test(codeStr)) {
+        const num = parseInt(codeStr, 10);
+        if (!Number.isNaN(num) && num > maxNum) {
+          maxNum = num;
+        }
+        if (codeStr.length > maxPadLength) {
+          maxPadLength = codeStr.length;
+        }
+      } else {
+        const match = codeStr.match(/\d+/);
+        if (match) {
+          const num = parseInt(match[0], 10);
+          if (!Number.isNaN(num) && num > maxNum) {
+            maxNum = num;
+          }
+          if (match[0].length > maxPadLength) {
+            maxPadLength = match[0].length;
+          }
+        }
+      }
+    });
+
+    const existingCodes = new Set(
+      list.map((r) => String(r.CategoryCode || "").trim().toLowerCase())
+    );
+
+    let nextNum = maxNum + 1;
+    let nextCode = String(nextNum).padStart(maxPadLength, "0");
+
+    while (
+      existingCodes.has(nextCode.toLowerCase()) ||
+      existingCodes.has(String(nextNum)) ||
+      existingCodes.has(String(nextNum).padStart(3, "0").toLowerCase()) ||
+      existingCodes.has(String(nextNum).padStart(4, "0").toLowerCase())
+    ) {
+      nextNum += 1;
+      nextCode = String(nextNum).padStart(maxPadLength, "0");
+    }
+
+    return nextCode;
   };
 
   const handleChange = (e) => {
@@ -139,8 +191,7 @@ function About() {
     });
   };
 
-  const handleEdit = (index) => {
-    const row = entries[index];
+  const handleEdit = (row) => {
     setForm({ ...row });
     // if(row.ImageName){
     // setImage(`${BASE_URL}/images/Dish/`+ row.ImageName);
@@ -153,7 +204,7 @@ function About() {
 
     setBgColor(row.BackColor || "#000000");
     setTextColor(row.ForeColor || "#ffffff");
-    setEditIndex(index);
+    setEditIndex(row.CategoryId);
     setShowModal(true);
 
     /* ADD THIS */
@@ -173,166 +224,146 @@ function About() {
   };
 
   const handleSubmit = async (e) => {
-
     e.preventDefault();
 
     console.log("IMAGE TYPE:", typeof image);
     console.log("IMAGE VALUE:", image);
 
-    if (!form.CategoryCode) {
+    if (!form.CategoryCode || !String(form.CategoryCode).trim()) {
       alert("Please enter Category Code");
       return;
     }
 
-    if (!form.CategoryName) {
+    if (!form.CategoryName || !String(form.CategoryName).trim()) {
       alert("Please enter Category Name");
       return;
     }
 
+    const isUpdate = Boolean(editIndex && form.CategoryId);
+    const userId = getLoggedInUserId();
+
+    if (!userId || !isValidGuid(userId)) {
+      alert("A valid logged-in User ID is required. Please log in again.");
+      return;
+    }
+
+    console.log(
+      isUpdate ? "Updating category with CategoryId:" : "Inserting new category, CategoryCode:",
+      isUpdate ? form.CategoryId : form.CategoryCode
+    );
 
     try {
       setLoading(true);
-      console.log("Update CategoryId:", form.CategoryId);
-      // UPDATE
-      if (editIndex !== null) {
 
-        const data = new FormData();
+      const data = new FormData();
 
-        Object.keys(form).forEach((key) => {
+      Object.keys(form).forEach((key) => {
+        if (key === "ImageData") return;
+        if (!isUpdate && key === "CategoryId") return; // Omit empty CategoryId on INSERT
 
-          if (typeof form[key] === "boolean") {
-            data.append(key, form[key] ? 1 : 0);   // 🔥 FIX
-          } else {
-            data.append(key, form[key] ?? "");
-          }
-
-        });
-
-        data.append("BackColor", bgColor ? bgColor.toString() : "#000000");
-        data.append("ForeColor", textColor ? textColor.toString() : "#ffffff");
-        data.append("isDispName", displayName);
-
-        data.append(
-          "Modifiers",
-          JSON.stringify(selectedModifiers)
-        );
-
-        /* ADD THIS 👇 */
-        data.append(
-          "KitchenTypes",
-          JSON.stringify(
-            kitchens
-              .filter(k => selectedKitchens.includes(Number(k.KitchenTypeCode)))
-              .map(k => ({
-                KitchenTypeCode: Number(k.KitchenTypeCode),
-                KitchenTypeName: k.KitchenTypeName
-              }))
-          )
-        );
-        data.append("ModifiedBy", localStorage.getItem("userId"));
-        data.append("ModifiedOn", new Date().toISOString());
-        if (image && typeof image !== "string") {
-          data.append("image", image);
+        if (typeof form[key] === "boolean") {
+          data.append(key, form[key] ? 1 : 0);
+        } else {
+          data.append(key, form[key] ?? "");
         }
-
-        await axios.post(
-          `${BASE_URL}/category`,
-          data,
-          {
-            headers: {
-              "Content-Type": "multipart/form-data"
-            }
-          }
-        );
-
-      }
-
-      // INSERT
-      else {
-        const data = new FormData();
-
-        Object.keys(form).forEach((key) => {
-          data.append(key, form[key]);
-        });
-
-        data.append("BackColor", bgColor ? bgColor.toString() : "#000000");
-        data.append("ForeColor", textColor ? textColor.toString() : "#ffffff");
-        data.append("isDispName", displayName);
-
-        data.append(
-          "KitchenTypes",
-          JSON.stringify(
-            kitchens
-              .filter(k => selectedKitchens.includes(k.KitchenTypeCode))
-              .map(k => ({
-                KitchenTypeCode: Number(k.KitchenTypeCode),
-                KitchenTypeName: k.KitchenTypeName
-              }))
-          )
-        );
-
-        data.append(
-          "Modifiers",
-          JSON.stringify(selectedModifiers)
-        );
-
-        if (image) {
-          data.append("image", image);
-        }
-
-        data.append("CreatedBy", localStorage.getItem("userId"));
-
-        await axios.post(
-          `${BASE_URL}/category`,
-          data,
-          {
-            headers: {
-              "Content-Type": "multipart/form-data"
-            }
-          }
-        );
-
-      }
-
-      // reload table
-      fetchCategory();
-
-      setEditIndex(null);
-
-      setForm({
-        CategoryId: "",
-        CategoryCode: generateCategoryCode(),
-        CategoryName: "",
-        ShortName: "",
-        SortCode: "",
-        isActive: false,
-        IsPublished: false,
-        isDiscountAllowed: false,
-        isKitchenPrint: false,
-        isTaxAllowed: false,
-        NameInOtherLanguage: false,
-        isServiceCharge: false,
-        isMemberSalesAllowed: false
       });
 
-      setImage(null);
-      setShowModal(false);
-      setSelectedModifiers([]);   // 🔥 ADD
-      setSelectedKitchens([]);    // 🔥 ADD
-      setDisplayName(true);       // 🔥 ADD
-      setBgColor("#000000");      // 🔥 ADD
-      setTextColor("#ff0000");    // 🔥 ADD
-      setSuccessMsg("Category saved successfully!");
+      data.append("BackColor", bgColor ? bgColor.toString() : "#000000");
+      data.append("ForeColor", textColor ? textColor.toString() : "#ffffff");
+      data.append("isDispName", displayName ? 1 : 0);
 
+      data.append(
+        "Modifiers",
+        JSON.stringify(selectedModifiers)
+      );
+
+      data.append(
+        "KitchenTypes",
+        JSON.stringify(
+          kitchens
+            .filter((k) => selectedKitchens.includes(Number(k.KitchenTypeCode)))
+            .map((k) => ({
+              KitchenTypeCode: Number(k.KitchenTypeCode),
+              KitchenTypeName: k.KitchenTypeName
+            }))
+        )
+      );
+
+      if (image && typeof image !== "string") {
+        data.append("image", image);
+      }
+
+      if (isUpdate) {
+        data.append("ModifiedBy", userId);
+        data.append("ModifiedOn", new Date().toISOString());
+      } else {
+        data.append("CreatedBy", userId);
+        data.append("CreatedOn", new Date().toISOString());
+      }
+
+      const selectedDb = localStorage.getItem("selected_db");
+      if (selectedDb) {
+        data.append("dbName", selectedDb);
+      }
+
+      console.log("CATEGORY REQUEST PAYLOAD:");
+      for (let [k, v] of data.entries()) {
+        console.log(`  ${k}:`, v instanceof File ? `File(${v.name})` : v);
+      }
+
+      const response = await axios.post(`${BASE_URL}/category`, data, {
+        headers: {
+          ...(selectedDb ? { "X-Db-Name": selectedDb } : {})
+        }
+      });
+
+      console.log("CATEGORY SAVE STATUS:", response.status);
+      console.log("CATEGORY SAVE RESPONSE:", response.data);
+
+      if (response.status === 200 || response.status === 201) {
+        // Refresh category list only after save request succeeds
+        await fetchCategory();
+
+        setEditIndex(null);
+        setShowModal(false);
+        setImage(null);
+        setSelectedModifiers([]);
+        setSelectedKitchens([]);
+        setDisplayName(true);
+        setBgColor("#000000");
+        setTextColor("#ff0000");
+
+        setForm({
+          CategoryId: "",
+          CategoryCode: "",
+          CategoryName: "",
+          ShortName: "",
+          SortCode: "",
+          isActive: false,
+          IsPublished: false,
+          isDiscountAllowed: false,
+          isKitchenPrint: false,
+          isTaxAllowed: false,
+          NameInOtherLanguage: false,
+          isServiceCharge: false,
+          isMemberSalesAllowed: false
+        });
+
+        setSuccessMsg(response.data?.message || "Category saved successfully!");
+      } else {
+        throw new Error(response.data?.message || "Failed to save category");
+      }
     } catch (err) {
-
-      console.log(err.response?.data);
-      alert(err.response?.data?.message || "Save failed");
-
+      console.error("Category save error:", err.response?.data || err);
+      alert(
+        err.response?.data?.message ||
+        err.response?.data?.error ||
+        err.message ||
+        "Save failed"
+      );
     } finally {
-      setLoading(false);  // 🔥 STOP LOADER
+      setLoading(false);
     }
-
   };
 
   const filteredData = entries.filter((row) => {
@@ -431,11 +462,12 @@ function About() {
 
           <button
             className="cat-new-btn"
-            disabled={loading}   // 🔥 ADD THIS
+            disabled={loading}
             onClick={() => {
+              const nextCode = generateCategoryCode(entries);
               setForm({
                 CategoryId: "",
-                CategoryCode: generateCategoryCode(),
+                CategoryCode: nextCode,
                 CategoryName: "",
                 ShortName: "",
                 SortCode: "",
@@ -456,7 +488,7 @@ function About() {
               setBgColor("#000000");
               setTextColor("#ff0000");
 
-              setEditIndex(null);   // 🔥 VERY IMPORTANT
+              setEditIndex(null);
               setShowModal(true);
             }}
           >
@@ -896,7 +928,14 @@ function About() {
                   {loading ? "Saving..." : "Save"}
                 </button>
 
-                <button type="button" className="cat-cancel-btn" onClick={() => setShowModal(false)}>
+                <button
+                  type="button"
+                  className="cat-cancel-btn"
+                  onClick={() => {
+                    setShowModal(false);
+                    setEditIndex(null);
+                  }}
+                >
                   Cancel
                 </button>
 
@@ -1021,7 +1060,7 @@ function About() {
             ) : (
 
               paginatedData.map((row, index) => (
-                <tr key={index} onClick={() => handleEdit(index)} style={{ cursor: "pointer" }}>
+                <tr key={index} onClick={() => handleEdit(row)} style={{ cursor: "pointer" }}>
                   <td>{row.CategoryCode}</td>
                   <td>{row.CategoryName}</td>
                   <td>{row.ShortName}</td>

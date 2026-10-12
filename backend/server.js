@@ -3,7 +3,7 @@ if (process.env.NODE_ENV !== "production") {
 }
 const express = require("express");
 const cors = require("cors");
-const { sql, poolPromise, dbContext } = require("./db");
+const { sql, poolPromise, dbContext, getPool } = require("./db");
 const { v4: uuidv4 } = require("uuid");
 const multer = require('multer');
 const path = require("path");
@@ -29,9 +29,22 @@ app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
 app.use((req, res, next) => {
-  const dbName = req.headers["x-db-name"];
+  const dbName = req.headers["x-db-name"] || req.headers["X-Db-Name"];
   dbContext.run(dbName, next);
 });
+
+// Helper for multer routes to re-enter dbContext store after multer completes
+const uploadWithDb = (multerMiddleware) => (req, res, next) => {
+  const dbName = req.headers["x-db-name"] || req.headers["X-Db-Name"];
+  multerMiddleware(req, res, (err) => {
+    if (err) return next(err);
+    if (dbName) {
+      dbContext.run(dbName, () => next());
+    } else {
+      next();
+    }
+  });
+};
 
 const inventoryRoutes = require("./routes/inventory");
 
@@ -482,9 +495,13 @@ app.get("/category", async (req, res) => {
                   (SELECT I.ImageData
                   from ImageList I
                   where  C.ImageId = I.ImageId) ImageData
-                  FROM CategoryMaster C ORDER BY CategoryCode DESC;`;
+                  FROM CategoryMaster C`;
 
-    if (CategoryCode) query += " WHERE CategoryCode = @CategoryCode";
+    if (CategoryCode) {
+      query += " WHERE CategoryCode = @CategoryCode";
+    }
+    query += " ORDER BY CategoryCode DESC;";
+
     const request = pool.request();
     if (CategoryCode) request.input("CategoryCode", sql.VarChar, CategoryCode);
     const result = await request.query(query);
@@ -509,7 +526,7 @@ app.get("/category", async (req, res) => {
 });
 
 // ---------------- CREATE / UPDATE CATEGORY ----------------
-app.post("/category", upload.single("image"), async (req, res) => {
+app.post("/category", uploadWithDb(upload.single("image")), async (req, res) => {
   try {
     console.log("=== START /category POST ===");
     console.log("Body:", req.body);
@@ -546,10 +563,12 @@ app.post("/category", upload.single("image"), async (req, res) => {
         ? ForeColor
         : "#ffffff";
 
-    const pool = await poolPromise;
+    const activeDb = req.headers["x-db-name"] || req.headers["X-Db-Name"] || req.body?.dbName || dbContext.getStore();
+    const pool = activeDb ? await getPool(activeDb) : await poolPromise;
     let catId = CategoryId;
+    const isNew = !catId || catId === "" || catId === "null" || catId === "undefined";
 
-    if (!catId || catId === "" || catId === "null" || catId === "undefined") {
+    if (isNew) {
       catId = uuidv4();
     }
 
@@ -559,10 +578,24 @@ app.post("/category", upload.single("image"), async (req, res) => {
     };
 
     const safeSortCode = parseInt(SortCode, 10) || 0;
-    const safeCategoryCode = (CategoryCode || "").substring(0, 20);
-    const safeCategoryName = (CategoryName || "").substring(0, 100);
-    const safeShortName = (ShortName || "").substring(0, 50);
-    const safeNameInOtherLanguage = (NameInOtherLanguage || "").substring(0, 100);
+    const safeCategoryCode = (CategoryCode || "").trim().substring(0, 20);
+    const safeCategoryName = (CategoryName || "").trim().substring(0, 100);
+    const safeShortName = (ShortName || "").trim().substring(0, 50);
+    const safeNameInOtherLanguage = (NameInOtherLanguage || "").trim().substring(0, 100);
+
+    if (!safeCategoryCode) {
+      return res.status(400).json({
+        success: false,
+        message: "Category Code is required"
+      });
+    }
+
+    if (!safeCategoryName) {
+      return res.status(400).json({
+        success: false,
+        message: "Category Name is required"
+      });
+    }
 
     let imageId = null;
     let imageName = null;
@@ -582,14 +615,50 @@ app.post("/category", upload.single("image"), async (req, res) => {
     }
 
     // Check if updating or creating
-    console.log("Checking if Category exists:", catId);
-    const exists = await pool
-      .request()
-      .input("CategoryId", sql.UniqueIdentifier, catId)
-      .query("SELECT CategoryId FROM CategoryMaster WHERE CategoryId=@CategoryId");
+    let exists = { recordset: [] };
+    if (!isNew) {
+      console.log("Checking if Category exists:", catId);
+      exists = await pool
+        .request()
+        .input("CategoryId", sql.UniqueIdentifier, catId)
+        .query("SELECT CategoryId FROM CategoryMaster WHERE CategoryId=@CategoryId");
+    }
 
-    if (exists.recordset.length > 0) {
+    const isUpdate = exists.recordset.length > 0;
+
+    // Check for duplicate CategoryCode against other records
+    const duplicateCodeCheck = await pool
+      .request()
+      .input("CategoryCode", sql.VarChar(20), safeCategoryCode)
+      .input("CategoryId", sql.UniqueIdentifier, catId)
+      .query("SELECT CategoryId FROM CategoryMaster WHERE CategoryCode = @CategoryCode AND CategoryId <> @CategoryId");
+
+    if (duplicateCodeCheck.recordset.length > 0) {
+      console.warn(`Duplicate CategoryCode detected: ${safeCategoryCode}`);
+      return res.status(400).json({
+        success: false,
+        message: `Category Code '${safeCategoryCode}' already exists. Please choose a different code.`
+      });
+    }
+
+    const guidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+    if (isUpdate) {
       console.log("Category exists. Updating...");
+
+      // Validate ModifiedBy if provided
+      let validModifiedBy = null;
+      const candidateModifiedId = (req.body.ModifiedBy || req.headers["x-user-id"] || req.body.CreatedBy || "").trim();
+      if (candidateModifiedId && guidRegex.test(candidateModifiedId)) {
+        const modUserCheck = await pool
+          .request()
+          .input("UserId", sql.UniqueIdentifier, candidateModifiedId)
+          .query("SELECT UserId FROM UserMaster WHERE UserId = @UserId");
+        if (modUserCheck.recordset.length > 0) {
+          validModifiedBy = modUserCheck.recordset[0].UserId;
+        }
+      }
+
       let request = pool.request()
         .input("CategoryId", sql.UniqueIdentifier, catId)
         .input("CategoryCode", sql.VarChar(20), safeCategoryCode)
@@ -607,11 +676,7 @@ app.post("/category", upload.single("image"), async (req, res) => {
         .input("isMemberSalesAllowed", sql.Bit, parseBit(isMemberSalesAllowed))
         .input("isTaxAllowed", sql.Bit, parseBit(isTaxAllowed))
         .input("NameInOtherLanguage", sql.VarChar(100), safeNameInOtherLanguage)
-        .input(
-          "ModifiedBy",
-          sql.UniqueIdentifier,
-          req.body.ModifiedBy || null
-        )
+        .input("ModifiedBy", sql.UniqueIdentifier, validModifiedBy)
         .input("ModifiedOn", sql.DateTime, new Date());
 
       // ⭐ only add ImageId if new image uploaded
@@ -623,7 +688,7 @@ CategoryCode=@CategoryCode,
 CategoryName=@CategoryName,
 SortCode=@SortCode,
 isActive=@isActive,
-IsPublished =@IsPublished,
+IsPublished=@IsPublished,
 ShortName=@ShortName,
 ImageId = COALESCE(@ImageId, ImageId),  
 BackColor=@BackColor,
@@ -642,6 +707,33 @@ WHERE CategoryId=@CategoryId
       console.log("Category updated successfully");
     } else {
       console.log("Category does not exist. Inserting...");
+
+      // Validate CreatedBy: must be a valid UserMaster.UserId GUID
+      const candidateUserId = (req.body.CreatedBy || req.headers["x-user-id"] || "").trim();
+
+      if (!candidateUserId || !guidRegex.test(candidateUserId)) {
+        console.error("CreatedBy is missing or not a valid GUID:", candidateUserId);
+        return res.status(400).json({
+          success: false,
+          message: "A valid User ID (GUID) is required for CreatedBy"
+        });
+      }
+
+      const userCheck = await pool
+        .request()
+        .input("UserId", sql.UniqueIdentifier, candidateUserId)
+        .query("SELECT UserId FROM UserMaster WHERE UserId = @UserId");
+
+      if (userCheck.recordset.length === 0) {
+        console.error("CreatedBy UserId not found in UserMaster:", candidateUserId);
+        return res.status(400).json({
+          success: false,
+          message: "CreatedBy UserId does not exist in UserMaster"
+        });
+      }
+
+      const validCreatedBy = userCheck.recordset[0].UserId;
+
       await pool
         .request()
         .input("CategoryId", sql.UniqueIdentifier, catId)
@@ -661,15 +753,15 @@ WHERE CategoryId=@CategoryId
         .input("isMemberSalesAllowed", sql.Bit, parseBit(isMemberSalesAllowed))
         .input("isTaxAllowed", sql.Bit, parseBit(isTaxAllowed))
         .input("NameInOtherLanguage", sql.VarChar(100), safeNameInOtherLanguage)
-        .input("CreatedBy", sql.UniqueIdentifier, req.body.CreatedBy)
+        .input("CreatedBy", sql.UniqueIdentifier, validCreatedBy)
         .input("CreatedOn", sql.DateTime, new Date())
         .query(
           `INSERT INTO CategoryMaster 
-                (CategoryId, CategoryCode, CategoryName, SortCode, isActive,IsPublished, ShortName, ImageId, BackColor, ForeColor, isKitchenPrint, isDiscountAllowed, isServiceCharge, isDispName, isMemberSalesAllowed, isTaxAllowed, NameInOtherLanguage, CreatedBy, CreatedOn) 
+                (CategoryId, CategoryCode, CategoryName, SortCode, isActive, IsPublished, ShortName, ImageId, BackColor, ForeColor, isKitchenPrint, isDiscountAllowed, isServiceCharge, isDispName, isMemberSalesAllowed, isTaxAllowed, NameInOtherLanguage, CreatedBy, CreatedOn) 
             VALUES 
             (@CategoryId, @CategoryCode, @CategoryName, @SortCode, @isActive, @IsPublished, @ShortName, @ImageId, @BackColor, @ForeColor, @isKitchenPrint, @isDiscountAllowed, @isServiceCharge, @isDispName, @isMemberSalesAllowed, @isTaxAllowed, @NameInOtherLanguage, @CreatedBy, @CreatedOn)`
         );
-      console.log("Category inserted successfully");
+      console.log("Category inserted successfully with CategoryId:", catId);
     }
 
     // Safely parse Modifiers
@@ -738,13 +830,19 @@ VALUES
     }
     console.log("KitchenTypes processed successfully");
     console.log("=== END /category POST ===");
-    res.json({ message: "Category saved successfully", CategoryId: catId });
+    res.json({
+      success: true,
+      message: "Category saved successfully",
+      CategoryId: catId,
+      CategoryCode: safeCategoryCode
+    });
   } catch (err) {
     console.error("FULL ERROR:", err);
 
     // ✅ Truncation error
     if (err.message && err.message.includes("String or binary data would be truncated")) {
       return res.status(400).json({
+        success: false,
         message: "Category Name or Short Name is too long (max limit exceeded)"
       });
     }
@@ -752,12 +850,14 @@ VALUES
     // ✅ Image / multer error
     if (err.message && err.message.includes("Field value too long")) {
       return res.status(400).json({
+        success: false,
         message: "Image size is too large. Please upload smaller file"
       });
     }
 
     // ✅ Send the actual error message in development response for debugging
     res.status(500).json({
+      success: false,
       message: "Category save failed. Please try again",
       error: err.message
     });
@@ -768,10 +868,9 @@ VALUES
 app.post("/categorykitchen", async (req, res) => {
 
   try {
-
     const { CategoryId, KitchenTypeCode, KitchenTypeName, checked } = req.body;
-
-    const pool = await poolPromise;
+    const activeDb = req.headers["x-db-name"] || req.headers["X-Db-Name"] || req.body?.dbName || dbContext.getStore();
+    const pool = activeDb ? await getPool(activeDb) : await poolPromise;
 
     if (checked) {
 
@@ -815,9 +914,8 @@ app.post("/categorykitchen", async (req, res) => {
 
 app.get("/categorykitchen/:id", async (req, res) => {
   try {
-
-    const pool = await poolPromise;
-
+    const activeDb = req.headers["x-db-name"] || req.headers["X-Db-Name"] || dbContext.getStore();
+    const pool = activeDb ? await getPool(activeDb) : await poolPromise;
     const result = await pool.request()
       .input("CategoryId", sql.UniqueIdentifier, req.params.id)
       .query(`
@@ -866,10 +964,9 @@ ORDER BY ModifierName
 app.post("/categorymodifier", async (req, res) => {
 
   try {
-
     const { CategoryId, ModifierId, checked } = req.body;
-
-    const pool = await poolPromise;
+    const activeDb = req.headers["x-db-name"] || req.headers["X-Db-Name"] || req.body?.dbName || dbContext.getStore();
+    const pool = activeDb ? await getPool(activeDb) : await poolPromise;
 
     if (checked) {
 
@@ -910,9 +1007,8 @@ AND ModifierId=@ModifierId
 app.get("/categorymodifier/:id", async (req, res) => {
 
   try {
-
-    const pool = await poolPromise;
-
+    const activeDb = req.headers["x-db-name"] || req.headers["X-Db-Name"] || dbContext.getStore();
+    const pool = activeDb ? await getPool(activeDb) : await poolPromise;
     const result = await pool.request()
       .input("CategoryId", sql.UniqueIdentifier, req.params.id)
       .query(`
@@ -936,7 +1032,8 @@ WHERE CategoryId=@CategoryId
 app.delete("/category/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const pool = await poolPromise;
+    const activeDb = req.headers["x-db-name"] || req.headers["X-Db-Name"] || dbContext.getStore();
+    const pool = activeDb ? await getPool(activeDb) : await poolPromise;
 
     // Check mapping before delete
     const check = await pool
@@ -963,7 +1060,8 @@ app.delete("/category/:id", async (req, res) => {
 
 app.get("/dishgroup", async (req, res) => {
   try {
-    const pool = await poolPromise;
+    const activeDb = req.headers["x-db-name"] || req.headers["X-Db-Name"] || dbContext.getStore();
+    const pool = activeDb ? await getPool(activeDb) : await poolPromise;
 
     const result = await pool.request().query(`
       SELECT 
@@ -1019,7 +1117,8 @@ app.get("/dishgroup/nextcode", async (req, res) => {
   try {
     console.log("NEXTCODE API HIT");
 
-    const pool = await poolPromise;
+    const activeDb = req.headers["x-db-name"] || req.headers["X-Db-Name"] || dbContext.getStore();
+    const pool = activeDb ? await getPool(activeDb) : await poolPromise;
 
     const result = await pool.request().query(`
       SELECT 
@@ -1027,7 +1126,9 @@ app.get("/dishgroup/nextcode", async (req, res) => {
       FROM DishGroupMaster
     `);
 
-    res.json({ code: result.recordset[0].NewCode });
+    const num = result.recordset[0].NewCode;
+    const padded = String(num).padStart(3, "0");
+    res.json({ code: padded });
 
   } catch (err) {
     console.log("NEXTCODE ERROR FULL:", err);
@@ -1038,7 +1139,8 @@ app.get("/dishgroup/nextcode", async (req, res) => {
 
 app.get("/dishgroup/:id", async (req, res) => {
   try {
-    const pool = await poolPromise;
+    const activeDb = req.headers["x-db-name"] || req.headers["X-Db-Name"] || dbContext.getStore();
+    const pool = activeDb ? await getPool(activeDb) : await poolPromise;
 
     const result = await pool.request()
       .input("DishGroupId", sql.UniqueIdentifier, req.params.id)
@@ -1079,15 +1181,19 @@ app.post("/dishgroup", upload.single("image"), async (req, res) => {
       KitchenTypes
     } = req.body;
 
-    const pool = await poolPromise;
-    // 🔥 AUTO GENERATE CODE (ADD HERE)
-    const codeResult = await pool.request().query(`
-  SELECT 
-    ISNULL(MAX(TRY_CAST(DishGroupCode AS INT)), 0) + 1 AS NewCode
-  FROM DishGroupMaster
-`);
+    const activeDb = req.headers["x-db-name"] || req.headers["X-Db-Name"] || req.body?.dbName || dbContext.getStore();
+    const pool = activeDb ? await getPool(activeDb) : await poolPromise;
 
-    const newCode = codeResult.recordset[0].NewCode;
+    let finalCode = DishGroupCode ? String(DishGroupCode).trim() : "";
+    if (!finalCode) {
+      const codeResult = await pool.request().query(`
+        SELECT 
+          ISNULL(MAX(TRY_CAST(DishGroupCode AS INT)), 0) + 1 AS NewCode
+        FROM DishGroupMaster
+      `);
+      finalCode = String(codeResult.recordset[0].NewCode).padStart(3, "0");
+    }
+
     let imageId = null;
 
     if (req.file) {
@@ -1110,12 +1216,43 @@ app.post("/dishgroup", upload.single("image"), async (req, res) => {
       .input("DishGroupId", sql.UniqueIdentifier, dgId)
       .query("SELECT DishGroupId FROM DishGroupMaster WHERE DishGroupId=@DishGroupId");
 
-    if (exists.recordset.length > 0) {
+    const isUpdate = exists.recordset.length > 0;
 
+    if (!isUpdate) {
+      const dupCheck = await pool.request()
+        .input("DishGroupCode", sql.VarChar(20), finalCode)
+        .query("SELECT DishGroupId FROM DishGroupMaster WHERE DishGroupCode=@DishGroupCode");
+      if (dupCheck.recordset.length > 0) {
+        return res.status(400).json({
+          success: false,
+          message: `Dish Group Code "${finalCode}" already exists. Please choose another code.`
+        });
+      }
+    }
+
+    const guidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    let validUserId = null;
+    const candidateUserId = (req.body.CreatedBy || req.body.ModifiedBy || req.headers["x-user-id"] || "").trim();
+    if (candidateUserId && guidRegex.test(candidateUserId)) {
+      const uCheck = await pool.request()
+        .input("UserId", sql.UniqueIdentifier, candidateUserId)
+        .query("SELECT UserId FROM UserMaster WHERE UserId=@UserId");
+      if (uCheck.recordset.length > 0) {
+        validUserId = uCheck.recordset[0].UserId;
+      }
+    }
+    if (!validUserId) {
+      const fallbackUser = await pool.request().query("SELECT TOP 1 UserId FROM UserMaster ORDER BY CreatedOn ASC");
+      if (fallbackUser.recordset.length > 0) {
+        validUserId = fallbackUser.recordset[0].UserId;
+      }
+    }
+
+    if (isUpdate) {
       // 🔄 UPDATE
       await pool.request()
         .input("DishGroupId", sql.UniqueIdentifier, dgId)
-        .input("DishGroupCode", sql.VarChar(20), DishGroupCode)
+        .input("DishGroupCode", sql.VarChar(20), finalCode)
         .input("DishGroupName", sql.VarChar(100), DishGroupName)
         .input("SortCode", sql.Int, SortCode)
         .input("isActive", sql.Bit, isActive == 1)
@@ -1135,7 +1272,7 @@ app.post("/dishgroup", upload.single("image"), async (req, res) => {
         .input("BackColor", sql.VarChar(50), BackColor)
         .input("ForeColor", sql.VarChar(50), ForeColor)
         .input("ImageId", sql.UniqueIdentifier, imageId)
-        .input("ModifiedBy", sql.UniqueIdentifier, req.body.ModifiedBy || null)
+        .input("ModifiedBy", sql.UniqueIdentifier, validUserId)
         .input("ModifiedOn", sql.DateTime, new Date())
         .query(`
          UPDATE DishGroupMaster SET
@@ -1161,11 +1298,10 @@ app.post("/dishgroup", upload.single("image"), async (req, res) => {
         `);
 
     } else {
-
       // 🆕 INSERT
       await pool.request()
         .input("DishGroupId", sql.UniqueIdentifier, dgId)
-        .input("DishGroupCode", sql.VarChar(20), String(newCode))
+        .input("DishGroupCode", sql.VarChar(20), finalCode)
         .input("DishGroupName", sql.VarChar(100), DishGroupName)
         .input("SortCode", sql.Int, SortCode)
         .input("isActive", sql.Bit, isActive == 1)
@@ -1185,9 +1321,7 @@ app.post("/dishgroup", upload.single("image"), async (req, res) => {
         .input("BackColor", sql.VarChar(50), BackColor || "#000000")
         .input("ForeColor", sql.VarChar(50), ForeColor || "#ffffff")
         .input("ImageId", sql.UniqueIdentifier, imageId)
-        //  .input("KitchenType", sql.VarChar(50), "")
-        //  .input("SubkitchenType", sql.VarChar(50), "")
-        .input("CreatedBy", sql.UniqueIdentifier, uuidv4())
+        .input("CreatedBy", sql.UniqueIdentifier, validUserId)
         .input("CreatedOn", sql.DateTime, new Date())
         .query(`
           INSERT INTO DishGroupMaster
@@ -1199,7 +1333,6 @@ app.post("/dishgroup", upload.single("image"), async (req, res) => {
         `);
     }
 
-    // 🔥 DELETE OLD MODIFIERS
     // ✅ DELETE OLD KITCHENS
     await pool.request()
       .input("DishGroupId", sql.UniqueIdentifier, dgId)
@@ -1227,7 +1360,6 @@ app.post("/dishgroup", upload.single("image"), async (req, res) => {
     `);
     }
 
-    // 🔥 DELETE OLD KITCHENS
     // ✅ DELETE OLD MODIFIERS
     await pool.request()
       .input("DishGroupId", sql.UniqueIdentifier, dgId)
@@ -1256,15 +1388,21 @@ app.post("/dishgroup", upload.single("image"), async (req, res) => {
     `);
     }
 
-    res.json({ message: "DishGroup saved successfully", DishGroupId: dgId });
+    res.json({
+      success: true,
+      message: "DishGroup saved successfully",
+      DishGroupId: dgId,
+      DishGroupCode: finalCode
+    });
 
   } catch (err) {
     console.log("🔥 FINAL ERROR FULL:", err);
     console.log("🔥 FINAL ERROR MSG:", err.message);
 
     res.status(500).json({
-      error: err.message,
-      stack: err.stack
+      success: false,
+      message: "DishGroup save failed: " + err.message,
+      error: err.message
     });
   }
 });
@@ -1272,13 +1410,14 @@ app.post("/dishgroup", upload.single("image"), async (req, res) => {
 //DELETE DishGroup
 app.delete("/dishgroup/:id", async (req, res) => {
   try {
-    const pool = await poolPromise;
+    const activeDb = req.headers["x-db-name"] || req.headers["X-Db-Name"] || dbContext.getStore();
+    const pool = activeDb ? await getPool(activeDb) : await poolPromise;
 
     await pool.request()
       .input("DishGroupId", sql.UniqueIdentifier, req.params.id)
       .query("DELETE FROM DishGroupMaster WHERE DishGroupId=@DishGroupId");
 
-    res.json({ message: "Deleted successfully" });
+    res.json({ success: true, message: "Deleted successfully" });
 
   } catch (err) {
     console.log(err);
@@ -1290,7 +1429,8 @@ app.delete("/dishgroup/:id", async (req, res) => {
 app.post("/dishgroupmodifier", async (req, res) => {
   try {
     const { DishGroupId, ModifierId, checked } = req.body;
-    const pool = await poolPromise;
+    const activeDb = req.headers["x-db-name"] || req.headers["X-Db-Name"] || req.body?.dbName || dbContext.getStore();
+    const pool = activeDb ? await getPool(activeDb) : await poolPromise;
 
     if (checked) {
       // ✅ INSERT
@@ -1315,7 +1455,7 @@ app.post("/dishgroupmodifier", async (req, res) => {
         `);
     }
 
-    res.json({ message: "DishGroup Modifier updated successfully" });
+    res.json({ success: true, message: "DishGroup Modifier updated successfully" });
 
   } catch (err) {
     console.log(err);
@@ -1325,7 +1465,8 @@ app.post("/dishgroupmodifier", async (req, res) => {
 //GET Modifier List (DISH GROUP MODIFIER API)
 app.get("/dishgroupmodifier/:id", async (req, res) => {
   try {
-    const pool = await poolPromise;
+    const activeDb = req.headers["x-db-name"] || req.headers["X-Db-Name"] || dbContext.getStore();
+    const pool = activeDb ? await getPool(activeDb) : await poolPromise;
 
     const result = await pool.request()
       .input("DishGroupId", sql.UniqueIdentifier, req.params.id)
@@ -1346,7 +1487,8 @@ app.get("/dishgroupmodifier/:id", async (req, res) => {
 //GET Kitchen List (DISH GROUP KITCHEN API)
 app.get("/dishgroupkitchen/:id", async (req, res) => {
   try {
-    const pool = await poolPromise;
+    const activeDb = req.headers["x-db-name"] || req.headers["X-Db-Name"] || dbContext.getStore();
+    const pool = activeDb ? await getPool(activeDb) : await poolPromise;
 
     const result = await pool.request()
       .input("DishGroupId", sql.UniqueIdentifier, req.params.id)
@@ -1370,8 +1512,8 @@ app.get("/dishgroupkitchen/:id", async (req, res) => {
 app.post("/dishgroupkitchen", async (req, res) => {
   try {
     const { DishGroupId, KitchenTypeCode, KitchenTypeName, checked } = req.body;
-
-    const pool = await poolPromise; // 🔥 MISSING LINE (IMPORTANT)
+    const activeDb = req.headers["x-db-name"] || req.headers["X-Db-Name"] || req.body?.dbName || dbContext.getStore();
+    const pool = activeDb ? await getPool(activeDb) : await poolPromise;
 
     if (checked) {
       await pool.request()
@@ -1409,7 +1551,8 @@ app.post("/dishgroupkitchen", async (req, res) => {
 //========================start dish================
 app.get("/dish", async (req, res) => {
   try {
-    const pool = await poolPromise;
+    const activeDb = req.headers["x-db-name"] || req.headers["X-Db-Name"] || dbContext.getStore();
+    const pool = activeDb ? await getPool(activeDb) : await poolPromise;
     const result = await pool.request().query(`
       SELECT 
         D.DishId,
@@ -1446,7 +1589,7 @@ app.get("/dish", async (req, res) => {
         DG.DishGroupName
       FROM DishMaster D
       LEFT JOIN DishGroupMaster DG ON D.DishGroupId = DG.DishGroupId
-      ORDER BY DG.DishGroupName ASC, D.Name ASC
+      ORDER BY TRY_CAST(D.DishCode AS INT) DESC, D.DishCode DESC
     `);
 
     res.json(result.recordset);
@@ -1458,7 +1601,8 @@ app.get("/dish", async (req, res) => {
 // Dedicated endpoint to fetch binary image on-demand when editing
 app.get("/dishimage/:dishId", async (req, res) => {
   try {
-    const pool = await poolPromise;
+    const activeDb = req.headers["x-db-name"] || req.headers["X-Db-Name"] || dbContext.getStore();
+    const pool = activeDb ? await getPool(activeDb) : await poolPromise;
     const result = await pool.request()
       .input("DishId", sql.UniqueIdentifier, req.params.dishId)
       .query(`
@@ -1482,7 +1626,8 @@ app.get("/dishimage/:dishId", async (req, res) => {
 
 app.get("/dish/nextcode", async (req, res) => {
   try {
-    const pool = await poolPromise;
+    const activeDb = req.headers["x-db-name"] || req.headers["X-Db-Name"] || dbContext.getStore();
+    const pool = activeDb ? await getPool(activeDb) : await poolPromise;
 
     const result = await pool.request().query(`
       SELECT 
@@ -1501,31 +1646,32 @@ app.get("/dish/nextcode", async (req, res) => {
   }
 });
 
-app.post("/dish", upload.single("image"), async (req, res) => {
+const handleSaveDish = async (req, res) => {
   try {
-    const pool = await poolPromise;
+    const activeDb = req.headers["x-db-name"] || req.headers["X-Db-Name"] || req.body?.dbName || dbContext.getStore();
+    const pool = activeDb ? await getPool(activeDb) : await poolPromise;
     const d = req.body;
 
     let dishGroups = [];
-
     if (d.DishGroups) {
-      dishGroups = JSON.parse(d.DishGroups);
+      try {
+        dishGroups = typeof d.DishGroups === "string" ? JSON.parse(d.DishGroups) : d.DishGroups;
+      } catch (e) {
+        dishGroups = [];
+      }
     }
 
-    if (!d.DishCode || d.DishCode.trim() === "") {
-      return res.status(400).send("DishCode required ❗");
+    let finalDishCode = d.DishCode ? String(d.DishCode).trim() : "";
+    if (!finalDishCode) {
+      const codeResult = await pool.request().query(`
+        SELECT 
+          ISNULL(MAX(TRY_CAST(DishCode AS INT)), 0) + 1 AS NewCode
+        FROM DishMaster
+      `);
+      finalDishCode = String(codeResult.recordset[0].NewCode).padStart(3, "0");
     }
 
-    const dishId = d.DishId ? d.DishId : uuidv4();
-
-    // 🔥 AUTO GENERATE DISH CODE (ADD HERE)
-    // const codeResult = await pool.request().query(`
-    //   SELECT 
-    //     ISNULL(MAX(TRY_CAST(DishCode AS INT)), 0) + 1 AS NewCode
-    //   FROM DishMaster
-    // `);
-
-    // const newDishCode = codeResult.recordset[0].NewCode;
+    const dishId = d.DishId || req.params?.id || uuidv4();
 
     let imageId = null;
 
@@ -1549,12 +1695,43 @@ app.post("/dish", upload.single("image"), async (req, res) => {
       .input("DishId", sql.UniqueIdentifier, dishId)
       .query("SELECT DishId FROM DishMaster WHERE DishId=@DishId");
 
-    if (exists.recordset.length > 0) {
+    const isUpdate = exists.recordset.length > 0;
 
+    if (!isUpdate) {
+      const dupCheck = await pool.request()
+        .input("DishCode", sql.NVarChar, finalDishCode)
+        .query("SELECT DishId FROM DishMaster WHERE DishCode=@DishCode");
+      if (dupCheck.recordset.length > 0) {
+        return res.status(400).json({
+          success: false,
+          message: `Dish Code "${finalDishCode}" already exists. Please choose another code.`
+        });
+      }
+    }
+
+    const guidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    let validUserId = null;
+    const candidateUserId = (d.CreatedBy || d.ModifiedBy || req.headers["x-user-id"] || "").trim();
+    if (candidateUserId && guidRegex.test(candidateUserId)) {
+      const uCheck = await pool.request()
+        .input("UserId", sql.UniqueIdentifier, candidateUserId)
+        .query("SELECT UserId FROM UserMaster WHERE UserId=@UserId");
+      if (uCheck.recordset.length > 0) {
+        validUserId = uCheck.recordset[0].UserId;
+      }
+    }
+    if (!validUserId) {
+      const fallbackUser = await pool.request().query("SELECT TOP 1 UserId FROM UserMaster ORDER BY CreatedOn ASC");
+      if (fallbackUser.recordset.length > 0) {
+        validUserId = fallbackUser.recordset[0].UserId;
+      }
+    }
+
+    if (isUpdate) {
       // 🔄 UPDATE (ALL COLUMNS)
       await pool.request()
         .input("DishId", sql.UniqueIdentifier, dishId)
-        .input("DishCode", sql.NVarChar, d.DishCode || "")
+        .input("DishCode", sql.NVarChar, finalDishCode)
         .input("Name", sql.NVarChar, d.Name || "")
         .input("ShortName", sql.NVarChar, d.ShortName || "")
         .input("Description", sql.NVarChar, d.Description || "")
@@ -1583,9 +1760,7 @@ app.post("/dish", upload.single("image"), async (req, res) => {
         .input("isOpenitem", sql.Bit, Number(d.isOpenitem) === 1)
         .input("IsSplitDish", sql.Bit, Number(d.IsSplitDish) === 1)
         .input("IsgroupDish", sql.Bit, Number(d.IsgroupDish) === 1)
-        .input("CreatedBy", sql.UniqueIdentifier, d.CreatedBy || null)
-        .input("CreatedOn", sql.DateTime, new Date())
-        .input("ModifiedBy", sql.UniqueIdentifier, d.ModifiedBy || null)
+        .input("ModifiedBy", sql.UniqueIdentifier, validUserId)
         .input("ModifiedOn", sql.DateTime, new Date())
         .query(`
           UPDATE DishMaster SET
@@ -1620,11 +1795,10 @@ app.post("/dish", upload.single("image"), async (req, res) => {
         `);
 
     } else {
-
       // 🆕 INSERT (ALL COLUMNS)
       await pool.request()
         .input("DishId", sql.UniqueIdentifier, dishId)
-        .input("DishCode", sql.VarChar(20), d.DishCode || "")
+        .input("DishCode", sql.VarChar(20), finalDishCode)
         .input("Name", sql.NVarChar, d.Name || "")
         .input("ShortName", sql.NVarChar, d.ShortName || "")
         .input("Description", sql.NVarChar, d.Description || "")
@@ -1654,7 +1828,7 @@ app.post("/dish", upload.single("image"), async (req, res) => {
         .input("isOpenitem", sql.Bit, Number(d.isOpenitem) === 1)
         .input("IsSplitDish", sql.Bit, Number(d.IsSplitDish) === 1)
         .input("IsgroupDish", sql.Bit, Number(d.IsgroupDish) === 1)
-        .input("CreatedBy", sql.UniqueIdentifier, d.CreatedBy || null)
+        .input("CreatedBy", sql.UniqueIdentifier, validUserId)
         .input("CreatedOn", sql.DateTime, new Date())
 
         .query(`
@@ -1683,10 +1857,9 @@ app.post("/dish", upload.single("image"), async (req, res) => {
       .query("DELETE FROM DishKitchenType WHERE DishId=@DishId");
 
     let kitchens = [];
-
     try {
       kitchens = d.KitchenTypes
-        ? JSON.parse(d.KitchenTypes)
+        ? (typeof d.KitchenTypes === "string" ? JSON.parse(d.KitchenTypes) : d.KitchenTypes)
         : [];
     } catch (e) {
       console.log("Kitchen parse error ❌", d.KitchenTypes);
@@ -1709,9 +1882,8 @@ app.post("/dish", upload.single("image"), async (req, res) => {
       .query("DELETE FROM DishModifier WHERE DishId=@DishId");
 
     let mods = [];
-
     try {
-      mods = d.Modifiers ? JSON.parse(d.Modifiers) : [];
+      mods = d.Modifiers ? (typeof d.Modifiers === "string" ? JSON.parse(d.Modifiers) : d.Modifiers) : [];
     } catch (e) {
       console.log("Modifier parse error ❌", d.Modifiers);
       mods = [];
@@ -1729,33 +1901,30 @@ app.post("/dish", upload.single("image"), async (req, res) => {
     }
 
     // 🔥 DISH GROUP SAVE
-
     await pool.request()
       .input("DishId", sql.UniqueIdentifier, dishId)
       .query(`
-    DELETE FROM DishGroupMapping
-    WHERE DishId=@DishId
-  `);
+        DELETE FROM DishGroupMapping
+        WHERE DishId=@DishId
+      `);
 
     for (let g of dishGroups) {
       await pool.request()
         .input("DishId", sql.UniqueIdentifier, dishId)
         .input("DishGroupId", sql.UniqueIdentifier, g)
         .query(`
-      INSERT INTO DishGroupMapping
-      (DishId, DishGroupId)
-      VALUES
-      (@DishId, @DishGroupId)
-    `);
+          INSERT INTO DishGroupMapping
+          (DishId, DishGroupId)
+          VALUES
+          (@DishId, @DishGroupId)
+        `);
     }
 
     // 🔥 ORDER ITEM SHARE SAVE
-
     let orderItemShares = [];
-
     try {
       orderItemShares = d.OrderItemShares
-        ? JSON.parse(d.OrderItemShares)
+        ? (typeof d.OrderItemShares === "string" ? JSON.parse(d.OrderItemShares) : d.OrderItemShares)
         : [];
     } catch (e) {
       orderItemShares = [];
@@ -1764,51 +1933,59 @@ app.post("/dish", upload.single("image"), async (req, res) => {
     await pool.request()
       .input("DishId", sql.UniqueIdentifier, dishId)
       .query(`
-    DELETE FROM OrderItemShare
-    WHERE OrderDetailId=@DishId
-  `);
+        DELETE FROM OrderItemShare
+        WHERE OrderDetailId=@DishId
+      `);
 
     for (let item of orderItemShares) {
-
       await pool.request()
         .input("OrderDetailId", sql.UniqueIdentifier, dishId)
         .input("CustomerName", sql.NVarChar(100), item)
         .query(`
-      INSERT INTO OrderItemShare
-      (
-        Id,
-        OrderDetailId,
-        CustomerName,
-        IsSelected,
-        CreatedDate
-      )
-      VALUES
-      (
-        NEWID(),
-        @OrderDetailId,
-        @CustomerName,
-        1,
-        GETDATE()
-      )
-    `);
+          INSERT INTO OrderItemShare
+          (
+            Id,
+            OrderDetailId,
+            CustomerName,
+            IsSelected,
+            CreatedDate
+          )
+          VALUES
+          (
+            NEWID(),
+            @OrderDetailId,
+            @CustomerName,
+            1,
+            GETDATE()
+          )
+        `);
     }
 
-
-    res.json({ message: "Saved ✅", DishId: dishId });
+    res.json({
+      success: true,
+      message: "Dish saved successfully",
+      DishId: dishId,
+      DishCode: finalDishCode
+    });
 
   } catch (err) {
     console.error("ERROR ❌", err);
-    res.status(500).send(err.message);
+    res.status(500).json({
+      success: false,
+      message: "Dish save failed: " + err.message,
+      error: err.message
+    });
   }
-});
+};
 
-
+app.post("/dish", upload.single("image"), handleSaveDish);
+app.put("/dish/:id", upload.single("image"), handleSaveDish);
 
 // ================= DELETE =================
 app.delete("/dish/:id", async (req, res) => {
   try {
-
-    const pool = await poolPromise;
+    const activeDb = req.headers["x-db-name"] || req.headers["X-Db-Name"] || dbContext.getStore();
+    const pool = activeDb ? await getPool(activeDb) : await poolPromise;
 
     await pool.request()
       .input("DishId", sql.UniqueIdentifier, req.params.id)
@@ -1825,7 +2002,8 @@ app.delete("/dish/:id", async (req, res) => {
 app.post("/dishmodifier", async (req, res) => {
   try {
     const { DishId, ModifierId, checked } = req.body;
-    const pool = await poolPromise;
+    const activeDb = req.headers["x-db-name"] || req.headers["X-Db-Name"] || req.body?.dbName || dbContext.getStore();
+    const pool = activeDb ? await getPool(activeDb) : await poolPromise;
 
     if (checked) {
       // ✅ INSERT
@@ -1860,7 +2038,8 @@ app.post("/dishmodifier", async (req, res) => {
 //GET Modifier List (DISH  MODIFIER API)
 app.get("/dishmodifier/:id", async (req, res) => {
   try {
-    const pool = await poolPromise;
+    const activeDb = req.headers["x-db-name"] || req.headers["X-Db-Name"] || dbContext.getStore();
+    const pool = activeDb ? await getPool(activeDb) : await poolPromise;
 
     const result = await pool.request()
       .input("DishId", sql.UniqueIdentifier, req.params.id)
@@ -1883,7 +2062,8 @@ app.get("/dishmodifier/:id", async (req, res) => {
 // GET: all modifier group configs for a given dish
 app.get("/dishmodifiergroup/:dishId", async (req, res) => {
   try {
-    const pool = await poolPromise;
+    const activeDb = req.headers["x-db-name"] || req.headers["X-Db-Name"] || dbContext.getStore();
+    const pool = activeDb ? await getPool(activeDb) : await poolPromise;
     const result = await pool.request()
       .input("DishId", sql.UniqueIdentifier, req.params.dishId)
       .query(`
@@ -1911,7 +2091,8 @@ app.post("/dishmodifiergroup", async (req, res) => {
     const { DishId, ModifierGroups } = req.body;
     if (!DishId) return res.status(400).send("DishId required");
 
-    const pool = await poolPromise;
+    const activeDb = req.headers["x-db-name"] || req.headers["X-Db-Name"] || req.body?.dbName || dbContext.getStore();
+    const pool = activeDb ? await getPool(activeDb) : await poolPromise;
     const groups = Array.isArray(ModifierGroups) ? ModifierGroups : [];
 
     // Delete existing mappings for this dish
@@ -1946,7 +2127,8 @@ app.post("/dishmodifiergroup", async (req, res) => {
 //GET Kitchen List (DISH  KITCHEN API)
 app.get("/dishkitchen/:id", async (req, res) => {
   try {
-    const pool = await poolPromise;
+    const activeDb = req.headers["x-db-name"] || req.headers["X-Db-Name"] || dbContext.getStore();
+    const pool = activeDb ? await getPool(activeDb) : await poolPromise;
 
     const result = await pool.request()
       .input("DishId", sql.UniqueIdentifier, req.params.id)
@@ -1966,7 +2148,8 @@ app.get("/dishkitchen/:id", async (req, res) => {
 
 app.get("/dishgroupmapping/:id", async (req, res) => {
   try {
-    const pool = await poolPromise;
+    const activeDb = req.headers["x-db-name"] || req.headers["X-Db-Name"] || dbContext.getStore();
+    const pool = activeDb ? await getPool(activeDb) : await poolPromise;
 
     const result = await pool.request()
       .input("DishId", sql.UniqueIdentifier, req.params.id)
@@ -1989,8 +2172,8 @@ app.get("/dishgroupmapping/:id", async (req, res) => {
 
 app.get("/orderitemshare/:id", async (req, res) => {
   try {
-
-    const pool = await poolPromise;
+    const activeDb = req.headers["x-db-name"] || req.headers["X-Db-Name"] || dbContext.getStore();
+    const pool = activeDb ? await getPool(activeDb) : await poolPromise;
 
     const result = await pool.request()
       .input("DishId", sql.UniqueIdentifier, req.params.id)
@@ -2014,8 +2197,8 @@ app.get("/orderitemshare/:id", async (req, res) => {
 app.post("/dishkitchen", async (req, res) => {
   try {
     const { DishId, KitchenTypeCode, KitchenTypeName, checked } = req.body;
-
-    const pool = await poolPromise; // 🔥 MISSING LINE (IMPORTANT)
+    const activeDb = req.headers["x-db-name"] || req.headers["X-Db-Name"] || req.body?.dbName || dbContext.getStore();
+    const pool = activeDb ? await getPool(activeDb) : await poolPromise;
 
     if (checked) {
       await pool.request()

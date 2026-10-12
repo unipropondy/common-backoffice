@@ -1,8 +1,9 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import axios from "axios";
 import "./Dish.css";
 
 import { BASE_URL } from "../config/api";
+import { getLoggedInUserId } from "../utils/audit";
 
 
 function Dish() {
@@ -180,10 +181,6 @@ function Dish() {
       // 🔥 create FormData
       const formData = new FormData();
 
-      const userId = localStorage.getItem("userId");
-
-      formData.append("CreatedBy", userId);
-
       // 🔥 append all fields
       Object.keys(dish).forEach((key) => {
         if (typeof dish[key] === "boolean") {
@@ -250,16 +247,37 @@ function Dish() {
         formData.append("image", categoryImage);
       }
 
+      const selectedDb = localStorage.getItem("selected_db");
+      if (selectedDb) {
+        formData.append("dbName", selectedDb);
+      }
+
+      const userId = getLoggedInUserId();
+      if (editIndex !== null && dish.DishId) {
+        formData.append("DishId", dish.DishId);
+        formData.append("ModifiedBy", userId);
+      } else {
+        formData.append("CreatedBy", userId);
+      }
+
+      const headers = {};
+      if (selectedDb) {
+        headers["X-Db-Name"] = selectedDb;
+      }
+      if (userId) {
+        headers["X-User-Id"] = userId;
+      }
+
       console.log("FORM DATA READY ✅");
 
       for (let pair of formData.entries()) {
         console.log(pair[0] + " = " + pair[1]);
       }
       if (editIndex !== null && dish.DishId) {
-        await axios.put(
-          `${BASE_URL}/dish/${dish.DishId}`,
+        await axios.post(
+          `${BASE_URL}/dish`,
           formData,
-          { headers: { "Content-Type": "multipart/form-data" } }
+          { headers }
         );
 
         // Save per-dish modifier group selection limits
@@ -271,7 +289,7 @@ function Dish() {
             MaxSelectionCount: g.MaxSelectionCount || 0,
             MultiselectAllow: g.MultiselectAllow ? 1 : 0
           }))
-        });
+        }, { headers });
 
         alert("Updated ✅");
 
@@ -279,7 +297,7 @@ function Dish() {
         const saveRes = await axios.post(
           `${BASE_URL}/dish`,
           formData,
-          { headers: { "Content-Type": "multipart/form-data" } }
+          { headers }
         );
 
         const newDishId = saveRes.data?.DishId;
@@ -292,13 +310,13 @@ function Dish() {
               MaxSelectionCount: g.MaxSelectionCount || 0,
               MultiselectAllow: g.MultiselectAllow ? 1 : 0
             }))
-          });
+          }, { headers });
         }
 
         alert("Inserted ✅");
       }
 
-      fetchDish();
+      await fetchDish();
       setShowModal(false);
       setDish(emptyDish);
       setEditIndex(null);
@@ -308,6 +326,7 @@ function Dish() {
 
     } catch (err) {
       console.log("SAVE ERROR ❌", err.response?.data || err.message);
+      alert(err.response?.data?.message || err.response?.data?.error || err.message || "Save failed");
     } finally {
       setLoading(false);  // 🔥 ADD THIS
     }
@@ -370,37 +389,55 @@ function Dish() {
     }
   };
 
+  const generateDishCode = (list = entries) => {
+    const arr = Array.isArray(list) ? list : [];
+    let maxNum = 0;
+    let maxPadLength = 3;
+    arr.forEach((row) => {
+      const codeStr = String(row.DishCode || "").trim();
+      if (!codeStr) return;
+      if (/^\d+$/.test(codeStr)) {
+        const num = parseInt(codeStr, 10);
+        if (!Number.isNaN(num) && num > maxNum) maxNum = num;
+        if (codeStr.length > maxPadLength) maxPadLength = codeStr.length;
+      } else {
+        const m = codeStr.match(/\d+/);
+        if (m) {
+          const num = parseInt(m[0], 10);
+          if (!Number.isNaN(num) && num > maxNum) maxNum = num;
+          if (m[0].length > maxPadLength) maxPadLength = m[0].length;
+        }
+      }
+    });
+    return String(maxNum + 1).padStart(maxPadLength, "0");
+  };
+
   const openNewDish = async () => {
+    let nextCode = "";
     try {
-      // 🔥 Fetch next auto-generated DishCode
-      const codeRes = await axios.get(`${BASE_URL}/dish/nextcode`);
-      const nextCode = codeRes.data?.code || "";
-
-      setDish({ ...emptyDish, DishCode: nextCode });
-      setSelecteddishKitchens([]);
-      setSelecteddishModifiers([]);
-      setSelectedDishGroups([]);
-      setSelectedOrderItemShare([]);
-      setDishModifierGroups([]);  // ✅ RESET
-      setDishImage(null);
-      setExistingImage(null);
-      setEditIndex(null);
-      setShowModal(true);
-
+      const selectedDb = localStorage.getItem("selected_db");
+      const codeRes = await axios.get(`${BASE_URL}/dish/nextcode`, {
+        headers: selectedDb ? { "X-Db-Name": selectedDb } : {}
+      });
+      nextCode = codeRes.data?.code || "";
     } catch (err) {
       console.log("CODE LOAD ERROR ❌", err);
-      // Still open modal even if code fetch fails
-      setDish(emptyDish);
-      setSelecteddishKitchens([]);
-      setSelecteddishModifiers([]);
-      setSelectedDishGroups([]);
-      setSelectedOrderItemShare([]);
-      setDishModifierGroups([]);
-      setDishImage(null);
-      setExistingImage(null);
-      setEditIndex(null);
-      setShowModal(true);
     }
+
+    if (!nextCode || entries.some(e => String(e.DishCode).trim() === String(nextCode).trim())) {
+      nextCode = generateDishCode(entries);
+    }
+
+    setDish({ ...emptyDish, DishCode: nextCode });
+    setSelecteddishKitchens([]);
+    setSelecteddishModifiers([]);
+    setSelectedDishGroups([]);
+    setSelectedOrderItemShare([]);
+    setDishModifierGroups([]);
+    setDishImage(null);
+    setExistingImage(null);
+    setEditIndex(null);
+    setShowModal(true);
   };
 
 
@@ -502,7 +539,16 @@ function Dish() {
     });
   });
 
-  const totalRows = filteredData.length;
+  const sortedData = [...filteredData].sort((a, b) => {
+    const numA = parseInt(a.DishCode, 10);
+    const numB = parseInt(b.DishCode, 10);
+    if (!Number.isNaN(numA) && !Number.isNaN(numB)) {
+      return numB - numA;
+    }
+    return String(b.DishCode || "").localeCompare(String(a.DishCode || ""), undefined, { numeric: true });
+  });
+
+  const totalRows = sortedData.length;
 
   const totalPages =
     rowsPerPage === "ALL"
@@ -521,8 +567,8 @@ function Dish() {
 
   const paginatedData =
     rowsPerPage === "ALL"
-      ? filteredData
-      : filteredData.slice(startIndex, endIndex);
+      ? sortedData
+      : sortedData.slice(startIndex, endIndex);
 
   const showingFrom = totalRows === 0 ? 0 : startIndex + 1;
 
