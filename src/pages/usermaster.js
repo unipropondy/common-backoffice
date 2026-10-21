@@ -170,7 +170,15 @@ console.log("USER GROUP API:", JSON.stringify(res.data, null, 2));
                         UserId: data.UserId || "",
                         UserCode: data.UserCode || "",
                         UserName: data.UserName || "",
-                        UserPassword: data.UserPassword || "",
+                        UserPassword: (() => {
+                          if (!data.UserPassword) return "";
+                          try {
+                            const decoded = atob(data.UserPassword);
+                            return (/^[\x20-\x7E]*$/.test(decoded) && btoa(decoded) === data.UserPassword) ? decoded : data.UserPassword;
+                          } catch {
+                            return data.UserPassword;
+                          }
+                        })(),
                         UserGroupId: data.UserGroupId || "",
                         FirstName: data.FirstName || "",
                         LastName: data.LastName || "",
@@ -224,10 +232,12 @@ console.log("USER GROUP API:", JSON.stringify(res.data, null, 2));
                 <div className="form_group" key={name}>
                   <label>{label}</label>
                   <input
+                    type={name === "UserPassword" ? "password" : "text"}
                     name={name}
                     value={form[name]}
                     onChange={handleChange}
                     readOnly={name === "UserCode" && editIndex === null}
+                    autoComplete={name === "UserPassword" ? "new-password" : "off"}
                   />
                 </div>
               ))}
