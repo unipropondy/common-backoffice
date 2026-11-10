@@ -1,6 +1,7 @@
 import { BASE_URL } from "../config/config";
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
+import * as XLSX from "xlsx";
 import './DayEndReport.css';
 import { logoBase64, posLogoBase64 } from "../config/logo";
 
@@ -19,6 +20,20 @@ const DayEndReport = ({ sidebarOpen }) => {
     const [loading, setLoading] = useState(false);
     const [showResults, setShowResults] = useState(false);
     const [availableDates, setAvailableDates] = useState([]);
+    const [downloadDropdownOpen, setDownloadDropdownOpen] = useState(false);
+    const downloadDropdownRef = useRef(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (downloadDropdownRef.current && !downloadDropdownRef.current.contains(event.target)) {
+                setDownloadDropdownOpen(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, []);
 
     useEffect(() => {
         const fetchAvailableDates = async () => {
@@ -89,422 +104,235 @@ const DayEndReport = ({ sidebarOpen }) => {
         }
     };
 
+    const handlePrint = async () => {
+        if (!reportData) {
+            alert("Please generate a report first");
+            return;
+        }
+        try {
+            const pdfUrl = `${API_BASE}/api/dayendreport/download-pdf?fromDate=${fromDate}&toDate=${toDate}`;
+            const response = await fetch(pdfUrl);
+            if (!response.ok) {
+                throw new Error(`Failed to fetch report PDF (status ${response.status})`);
+            }
+            const blob = await response.blob();
+            const blobUrl = URL.createObjectURL(blob);
+
+            let printFrame = document.getElementById("dayend-pdf-print-frame");
+            if (!printFrame) {
+                printFrame = document.createElement("iframe");
+                printFrame.id = "dayend-pdf-print-frame";
+                printFrame.style.position = "fixed";
+                printFrame.style.right = "0";
+                printFrame.style.bottom = "0";
+                printFrame.style.width = "0";
+                printFrame.style.height = "0";
+                printFrame.style.border = "0";
+                document.body.appendChild(printFrame);
+            }
+
+            printFrame.onload = () => {
+                try {
+                    setTimeout(() => {
+                        if (printFrame.contentWindow) {
+                            printFrame.contentWindow.focus();
+                            printFrame.contentWindow.print();
+                        }
+                    }, 300);
+                } catch (e) {
+                    console.error("Iframe print error, falling back to window:", e);
+                    const win = window.open(blobUrl, "_blank");
+                    if (win) {
+                        win.onload = () => win.print();
+                    }
+                }
+            };
+
+            printFrame.src = blobUrl;
+        } catch (err) {
+            console.error("Print error:", err);
+            const directUrl = `${API_BASE}/api/dayendreport/download-pdf?fromDate=${fromDate}&toDate=${toDate}`;
+            window.open(directUrl, "_blank");
+        }
+    };
+
     const handleDownload = () => {
         if (!reportData) {
             alert("Please generate a report first");
             return;
         }
-
-        const now = new Date();
-
-        const printDate = now.toLocaleDateString('en-GB', {
-            timeZone: 'Asia/Singapore'
-        });
-
-        const printTime = now.toLocaleTimeString('en-US', {
-            timeZone: 'Asia/Singapore',
-            hour12: true
-        });
-        const dateRangeText = fromDate === toDate ? fromDate : `${fromDate}_to_${toDate}`;
-        const dateRangeFormatted = fromDate === toDate ? formatDate(fromDate) : `${formatDate(fromDate)} to ${formatDate(toDate)}`;
-
-        let htmlContent = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="UTF-8">
-            <title>Day End Report - ${dateRangeFormatted}</title>
-            <style>
-                @page {
-                    size: A4 portrait;
-                    margin: 6mm 8mm;
-                }
-                * {
-                    margin: 0;
-                    padding: 0;
-                    box-sizing: border-box;
-                    font-family: 'Cambria', 'Times New Roman', serif;
-                }
-                html, body {
-                    background: #ffffff;
-                    margin: 0;
-                    padding: 0;
-                    font-family: 'Cambria', 'Times New Roman', serif;
-                    color: #333333;
-                    -webkit-print-color-adjust: exact;
-                    print-color-adjust: exact;
-                }
-                .a4-page {
-                    width: 100%;
-                    max-width: 210mm;
-                    margin: 0 auto;
-                    padding: 4mm 6mm;
-                    box-sizing: border-box;
-                    background: white;
-                    display: flex;
-                    flex-direction: column;
-                    min-height: 277mm;
-                }
-                .header-container {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    border-bottom: 1.5px solid #193B59;
-                    padding-bottom: 8px;
-                    margin-bottom: 10px;
-                }
-                .logo { 
-                    max-width: 120px; 
-                    max-height: 52px; 
-                    object-fit: contain;
-                }
-                .header-center {
-                    text-align: center;
-                    flex: 1;
-                }
-                .company-name { 
-                    font-size: 22px; 
-                    font-weight: bold; 
-                    color: #193B59; 
-                    text-transform: uppercase;
-                    letter-spacing: 0.5px;
-                }
-                .company-address { 
-                    font-size: 13px; 
-                    color: #555; 
-                    margin-top: 2px; 
-                }
-                .pos-badge {
-                    display: flex;
-                    align-items: center;
-                    justify-content: flex-end;
-                }
-                .pos-badge img {
-                    max-height: 54px;
-                    max-width: 75px;
-                    object-fit: contain;
-                    display: block;
-                }
-                .report-title { 
-                    text-align: center; 
-                    font-size: 22px; 
-                    font-weight: bold; 
-                    margin: 10px 0 4px 0; 
-                    color: #193B59; 
-                    text-transform: uppercase; 
-                    letter-spacing: 1px;
-                }
-                .report-info {
-                    text-align: center;
-                    margin-bottom: 14px;
-                    font-size: 13.5px;
-                    color: #555;
-                }
-                table { 
-                    width: 100%; 
-                    border-collapse: collapse; 
-                    margin: 10px 0 20px 0; 
-                    font-size: 15px; 
-                    border: 1px solid #d3d3d3;
-                }
-                th, td { 
-                    padding: 8px 14px; 
-                    border: 1px solid #d3d3d3; 
-                    text-align: left; 
-                    font-size: 15px; 
-                }
-                th { 
-                    background: #193B59; 
-                    color: #ffffff; 
-                    font-weight: bold; 
-                    text-transform: uppercase;
-                    text-align: left;
-                    border: 1px solid #193B59;
-                    padding: 10px 14px;
-                    font-size: 16px;
-                }
-                .section-head td {
-                    background-color: #eaeff2 !important;
-                    font-weight: bold;
-                    color: #193B59;
-                    font-size: 15.5px;
-                    text-transform: uppercase;
-                    padding: 8px 14px;
-                    text-align: left !important;
-                }
-                .total-row td {
-                    background-color: #eef2f8 !important;
-                    font-weight: bold;
-                    color: #193B59;
-                    border-top: 1.5px solid #193B59;
-                    font-size: 15px;
-                    padding: 8px 14px;
-                }
-                .signature-container {
-                    margin-top: auto;
-                    display: flex;
-                    justify-content: space-between;
-                    font-size: 12px;
-                    color: #333;
-                    page-break-inside: avoid;
-                    padding-top: 24px;
-                }
-                .sig-box {
-                    display: flex;
-                    flex-direction: column;
-                    align-items: center;
-                }
-                .sig-line {
-                    border-top: 1px solid #333;
-                    width: 160px;
-                    padding-top: 6px;
-                    text-align: center;
-                    font-size: 12px;
-                    font-weight: bold;
-                    color: #333;
-                }
-                .footer-bar { 
-                    margin-top: 20px;
-                    text-align: center;
-                    padding-top: 10px; 
-                    border-top: 1px solid #e1e6eb;
-                    page-break-inside: avoid;
-                }
-                .system-footer {
-                    font-size: 11px;
-                    color: #888888;
-                    margin-bottom: 3px;
-                }
-                .powered-footer {
-                    font-size: 10.5px;
-                    color: #aaaaaa;
-                    font-weight: 600;
-                }
-                .amount-col {
-                    text-align: right;
-                }
-                th.amount-col {
-                    text-align: center;
-                }
-                tr {
-                    page-break-inside: avoid;
-                }
-            </style>
-        </head>
-        <body>
-            <div class="a4-page">
-                <div class="header-container">
-                    <div style="flex: 1;">
-                        <img src="${logoBase64}" alt="Unipro Logo" class="logo" />
-                    </div>
-                    <div class="header-center">
-                        <div class="company-name">${orgInfo?.CompanyName || "SMART POS"}</div>
-                        <div class="company-address">${orgInfo?.Address || ""}</div>
-                        <div class="company-address">${orgInfo?.Phone ? `Phone: ${orgInfo.Phone}` : ""}</div>
-                    </div>
-                    <div style="flex: 1; display: flex; justify-content: flex-end;">
-                        <div class="pos-badge">
-                            <img src="${posLogoBase64}" alt="POS Logo" />
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="report-title">DAY END REPORT</div>
-                
-                <div class="report-info">
-                    Period: ${dateRangeFormatted} &nbsp;|&nbsp; Printed: ${printDate}, ${printTime}
-                </div>
-                
-                <table>
-                    <thead>
-                        <tr>
-                            <th>PARTICULARS</th>
-                            <th class="amount-col">AMOUNT ($)</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <!-- Sales Detail Section -->
-                        <tr class="section-head">
-                            <td colspan="2">SALES DETAIL</td>
-                        </tr>
-                        <tr>
-                            <td>Total Sales</td>
-                            <td class="amount-col">${(reportData.salesDetail?.totalSales || 0).toFixed(2)}</td>
-                        </tr>
-                        <tr>
-                            <td>Discount</td>
-                            <td class="amount-col">${(reportData.salesDetail?.totalDiscount || 0).toFixed(2)}</td>
-                        </tr>
-                        <tr>
-                            <td>Service Charge</td>
-                            <td class="amount-col">${(reportData.salesDetail?.totalServiceCharge || 0).toFixed(2)}</td>
-                        </tr>
-                        <tr>
-                            <td>Tax</td>
-                            <td class="amount-col">${(reportData.salesDetail?.totalTax || 0).toFixed(2)}</td>
-                        </tr>
-                        <tr>
-                            <td>Round Off</td>
-                            <td class="amount-col">${(reportData.salesDetail?.roundOff || 0).toFixed(2)}</td>
-                        </tr>
-                        <tr class="total-row">
-                            <td><strong>Total</strong></td>
-                            <td class="amount-col">${(reportData.salesDetail?.netTotal || 0).toFixed(2)}</td>
-                        </tr>
-                        
-                        <!-- Paymode Detail Section -->
-                        <tr class="section-head">
-                            <td colspan="2">PAYMODE DETAIL</td>
-                        </tr>
-                        ${Object.entries(reportData.paymodeDetail || {}).map(([key, item]) => {
-                            const amt = typeof item === 'object' ? item.amount : item;
-                            const count = typeof item === 'object' ? item.receiptCount : 0;
-                            return `
-                            <tr>
-                                <td>
-                                    <table style="width: 100%; border: none !important; margin: 0 !important; padding: 0 !important; background: transparent !important;">
-                                        <tr>
-                                            <td style="border: none !important; padding: 0 !important; text-align: left !important; background: transparent !important; color: inherit !important;">${key}</td>
-                                            <td style="border: none !important; padding: 0 !important; text-align: right !important; background: transparent !important; color: #555 !important; font-weight: 600;">${count}</td>
-                                        </tr>
-                                    </table>
-                                </td>
-                                <td class="amount-col">${(amt || 0).toFixed(2)}</td>
-                            </tr>
-                            `;
-                        }).join('')}
-                        <tr class="total-row">
-                            <td><strong>Total</strong></td>
-                            <td class="amount-col">${Object.values(reportData.paymodeDetail || {}).reduce((sum, item) => sum + (typeof item === 'object' ? item.amount : item), 0).toFixed(2)}</td>
-                        </tr>
-                        
-                        <!-- Settlement Detail Section -->
-                        <tr class="section-head">
-                            <td colspan="2">SETTLEMENT DETAIL</td>
-                        </tr>
-                        <tr>
-                            <td>Cash Total</td>
-                            <td class="amount-col">${(reportData.settlementDetail?.cashTotal || 0).toFixed(2)}</td>
-                        </tr>
-                        <tr>
-                            <td>Other Total</td>
-                            <td class="amount-col">${(reportData.settlementDetail?.otherTotal || 0).toFixed(2)}</td>
-                        </tr>
-                        
-                        <!-- Analysis Section -->
-                        <tr class="section-head">
-                            <td colspan="2">ANALYSIS</td>
-                        </tr>
-                        <tr>
-                            <td>Sales Amount</td>
-                            <td class="amount-col">${(reportData.analysis?.salesAmount || 0).toFixed(2)}</td>
-                        </tr>
-                        <tr>
-                            <td>No of Bills</td>
-                            <td class="amount-col">${reportData.analysis?.noOfBills || 0}</td>
-                        </tr>
-                        <tr>
-                            <td>Avg/Bill</td>
-                            <td class="amount-col">${(reportData.analysis?.avgPerBill || 0).toFixed(2)}</td>
-                        </tr>
-                        
-                        <!-- Void Detail Section -->
-                        <tr class="section-head">
-                            <td colspan="2">VOID DETAIL</td>
-                        </tr>
-                        <tr>
-                            <td>Void Item Qty</td>
-                            <td class="amount-col">${reportData.voidDetail?.voidItemQty || 0}</td>
-                        </tr>
-                        <tr>
-                            <td>Void Item Amount</td>
-                            <td class="amount-col">${(reportData.voidDetail?.voidItemAmount || 0).toFixed(2)}</td>
-                        </tr>
-                    </tbody>
-                </table>
-
-                <div class="signature-container">
-                    <div class="sig-box">
-                        <div class="sig-line">Cashier Signature</div>
-                    </div>
-                    <div class="sig-box">
-                        <div class="sig-line">Authorized Signature</div>
-                    </div>
-                </div>
-
-                <div class="footer-bar">
-                    <div class="system-footer">*** System Generated Report ***</div>
-                    <div class="powered-footer">Powered by Unipro SG</div>
-                </div>
-            </div>
-            <script>
-                window.onload = function() {
-                    window.print();
-                }
-            </script>
-        </body>
-        </html>
-        `;
-
-        const blob = new Blob([htmlContent], { type: "text/html" });
-        const link = document.createElement("a");
-        const url = URL.createObjectURL(blob);
-        link.href = url;
-        link.download = `DayEndReport_${dateRangeText}.html`;
+        const pdfUrl = `${API_BASE}/api/dayendreport/download-pdf?fromDate=${fromDate}&toDate=${toDate}`;
+        const link = document.createElement('a');
+        link.href = pdfUrl;
+        link.setAttribute('download', `DayEndReport_${fromDate}_to_${toDate}.pdf`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        URL.revokeObjectURL(url);
+    };
+
+    const handleExcel = () => {
+        if (!reportData) {
+            alert("Please generate a report first");
+            return;
+        }
+        const exportRows = [];
+        exportRows.push(["DAY END REPORT"]);
+        exportRows.push([`Period: ${fromDate} to ${toDate}`]);
+        exportRows.push([]);
+
+        // Table Header
+        exportRows.push(["PARTICULARS", "AMOUNT"]);
+
+        // SALES DETAIL
+        exportRows.push(["SALES DETAIL", ""]);
+        exportRows.push(["Total Sales", Number(reportData.salesDetail?.totalSales || 0).toFixed(2)]);
+        exportRows.push(["Discount", Number(reportData.salesDetail?.totalDiscount || 0).toFixed(2)]);
+        exportRows.push(["Service Charge", Number(reportData.salesDetail?.totalServiceCharge || 0).toFixed(2)]);
+        exportRows.push(["Tax", Number(reportData.salesDetail?.totalTax || 0).toFixed(2)]);
+        exportRows.push(["Round Off", Number(reportData.salesDetail?.roundOff || 0).toFixed(2)]);
+        exportRows.push(["Total", Number(reportData.salesDetail?.netTotal || 0).toFixed(2)]);
+
+        // PAYMODE DETAIL
+        exportRows.push(["PAYMODE DETAIL", ""]);
+        Object.entries(reportData.paymodeDetail || {}).forEach(([key, item]) => {
+            const amt = typeof item === 'object' ? item.amount : item;
+            exportRows.push([key.toUpperCase(), Number(amt || 0).toFixed(2)]);
+        });
+
+        // SETTLEMENT DETAIL
+        exportRows.push(["SETTLEMENT DETAIL", ""]);
+        exportRows.push(["Cash", Number(reportData.settlementDetail?.cashTotal || 0).toFixed(2)]);
+        exportRows.push(["Card", Number(reportData.settlementDetail?.cardTotal || 0).toFixed(2)]);
+        exportRows.push(["Other", Number(reportData.settlementDetail?.otherTotal || 0).toFixed(2)]);
+
+        // ANALYSIS
+        exportRows.push(["ANALYSIS", ""]);
+        exportRows.push(["Sales Amount", Number(reportData.analysis?.salesAmount || 0).toFixed(2)]);
+        exportRows.push(["No of Bills", reportData.analysis?.noOfBills || 0]);
+        exportRows.push(["Average Per Bill", Number(reportData.analysis?.avgPerBill || 0).toFixed(2)]);
+
+        // VOID DETAIL
+        exportRows.push(["VOID DETAIL", ""]);
+        exportRows.push(["Void Item Quantity", reportData.voidDetail?.voidItemQty || 0]);
+        exportRows.push(["Void Item Amount", Number(reportData.voidDetail?.voidItemAmount || 0).toFixed(2)]);
+
+        const worksheet = XLSX.utils.aoa_to_sheet(exportRows);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "DayEndReport");
+        XLSX.writeFile(workbook, `DayEndReport_${fromDate}_to_${toDate}.xlsx`);
     };
 
     return (
         <div className={`dayend-report ${sidebarOpen ? "sidebar-open" : ""}`}>
             <div className="dayend-content-wrapper">
-                {/* Header Banner */}
-                <div className="dayend-header-card">
-                    <div className="dayend-header-left">
-                        <div className="dayend-icon-box">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                                <line x1="3" y1="9" x2="21" y2="9"></line>
-                                <line x1="9" y1="21" x2="9" y2="9"></line>
-                                <path d="M13 13h4"></path>
-                                <path d="M13 17h4"></path>
-                            </svg>
-                        </div>
-                        <div className="dayend-header-text">
-                            <h2>Day End Report</h2>
-                            <p>Select a date and click Generate to see results</p>
-                        </div>
-                    </div>
+                {/* Clean Page Title (Matching Sales Report) */}
+                <div className="dayend-page-header">
+                    <h2 className="dayend-page-title">Day End Report</h2>
                 </div>
 
-                {/* Control Bar (Date & Buttons) */}
+                {/* Control Bar (Date Picker, Generate, Report & Download Options) */}
                 <div className="dayend-control-card">
-                    <input
-                        type="date"
-                        className="dayend-date-picker"
-                        value={fromDate}
-                        onChange={(e) => {
-                            setFromDate(e.target.value);
-                            setToDate(e.target.value);
-                        }}
-                    />
-                    <button
-                        className="dayend-btn-generate"
-                        onClick={handleGenerate}
-                        disabled={loading}
-                    >
-                        <span className="dayend-btn-icon">⚙</span> Generate
-                    </button>
-
-                    {reportData && (
+                    <div className="dayend-control-left">
+                        <input
+                            type="date"
+                            className="dayend-date-picker"
+                            value={fromDate}
+                            onChange={(e) => {
+                                setFromDate(e.target.value);
+                                setToDate(e.target.value);
+                            }}
+                        />
+                        <button
+                            className="dayend-btn-generate"
+                            onClick={handleGenerate}
+                            disabled={loading}
+                        >
+                            <span className="dayend-btn-icon">⚙</span> Generate
+                        </button>
                         <button
                             className="dayend-btn-report"
-                            onClick={handleDownload}
+                            onClick={handleGenerate}
+                            disabled={loading}
+                            type="button"
                         >
                             <span className="dayend-btn-icon">↓</span> Report
                         </button>
+                    </div>
+
+                    {reportData && (
+                        <div className="download-dropdown-wrapper" ref={downloadDropdownRef}>
+                            <button
+                                className="dayend-download-btn-inside"
+                                onClick={() => setDownloadDropdownOpen(!downloadDropdownOpen)}
+                                title="Download Options"
+                                type="button"
+                            >
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                    <polyline points="7 10 12 15 17 10"></polyline>
+                                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                                </svg>
+                            </button>
+                            {downloadDropdownOpen && (
+                                <div className="download-dropdown-menu">
+                                    <button
+                                        type="button"
+                                        className="download-dropdown-item"
+                                        onClick={() => {
+                                            setDownloadDropdownOpen(false);
+                                            handlePrint();
+                                        }}
+                                    >
+                                        <span className="download-dropdown-icon print">
+                                            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                                                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                                                <rect x="6" y="14" width="12" height="8"></rect>
+                                            </svg>
+                                        </span>
+                                        Print
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="download-dropdown-item"
+                                        onClick={() => {
+                                            setDownloadDropdownOpen(false);
+                                            handleDownload();
+                                        }}
+                                    >
+                                        <span className="download-dropdown-icon pdf">
+                                            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                                <polyline points="14 2 14 8 20 8"></polyline>
+                                                <line x1="16" y1="13" x2="8" y2="13"></line>
+                                                <line x1="16" y1="17" x2="8" y2="17"></line>
+                                                <polyline points="10 9 9 9 8 9"></polyline>
+                                            </svg>
+                                        </span>
+                                        PDF
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="download-dropdown-item"
+                                        onClick={() => {
+                                            setDownloadDropdownOpen(false);
+                                            handleExcel();
+                                        }}
+                                    >
+                                        <span className="download-dropdown-icon excel">
+                                            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                                <line x1="9" y1="3" x2="9" y2="21"></line>
+                                                <line x1="15" y1="3" x2="15" y2="21"></line>
+                                                <line x1="3" y1="9" x2="21" y2="9"></line>
+                                                <line x1="3" y1="15" x2="21" y2="15"></line>
+                                            </svg>
+                                        </span>
+                                        Excel
+                                    </button>
+                                </div>
+                            )}
+                        </div>
                     )}
                 </div>
 
@@ -517,31 +345,32 @@ const DayEndReport = ({ sidebarOpen }) => {
                             <thead>
                                 <tr>
                                     <th className="dayend-th-particular">PARTICULARS</th>
-                                    <th className="dayend-th-amount">AMOUNT ($)</th>
+                                    <th className="dayend-th-amount">AMOUNT</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {/* SALES DETAIL SECTION */}
                                 <tr className="dayend-section-head">
-                                    <td colSpan="2">SALES DETAIL</td>
+                                    <td className="dayend-td-particular dayend-section-title"><strong>SALES DETAIL</strong></td>
+                                    <td className="dayend-td-amount"></td>
                                 </tr>
-                                <tr>
+                                <tr className="dayend-data-row">
                                     <td className="dayend-td-particular">Total Sales</td>
                                     <td className="dayend-td-amount">{(reportData.salesDetail?.totalSales || 0).toFixed(2)}</td>
                                 </tr>
-                                <tr>
+                                <tr className="dayend-data-row">
                                     <td className="dayend-td-particular">Discount</td>
                                     <td className="dayend-td-amount">{(reportData.salesDetail?.totalDiscount || 0).toFixed(2)}</td>
                                 </tr>
-                                <tr>
+                                <tr className="dayend-data-row">
                                     <td className="dayend-td-particular">Service Charge</td>
                                     <td className="dayend-td-amount">{(reportData.salesDetail?.totalServiceCharge || 0).toFixed(2)}</td>
                                 </tr>
-                                <tr>
+                                <tr className="dayend-data-row">
                                     <td className="dayend-td-particular">Tax</td>
                                     <td className="dayend-td-amount">{(reportData.salesDetail?.totalTax || 0).toFixed(2)}</td>
                                 </tr>
-                                <tr>
+                                <tr className="dayend-data-row">
                                     <td className="dayend-td-particular">Round Off</td>
                                     <td className="dayend-td-amount">{(reportData.salesDetail?.roundOff || 0).toFixed(2)}</td>
                                 </tr>
@@ -552,78 +381,65 @@ const DayEndReport = ({ sidebarOpen }) => {
 
                                 {/* PAYMODE DETAIL SECTION */}
                                 <tr className="dayend-section-head">
-                                    <td colSpan="2">PAYMODE DETAIL</td>
+                                    <td className="dayend-td-particular dayend-section-title"><strong>PAYMODE DETAIL</strong></td>
+                                    <td className="dayend-td-amount"></td>
                                 </tr>
                                 {Object.entries(reportData.paymodeDetail || {}).map(([key, item]) => {
                                     const amt = typeof item === 'object' ? item.amount : item;
-                                    const count = typeof item === 'object' ? (item.receiptCount || 0) : 0;
                                     return (
-                                        <tr key={key}>
+                                        <tr key={key} className="dayend-data-row">
                                             <td className="dayend-td-particular">{key.toUpperCase()}</td>
-                                            <td className="dayend-td-paymode-combined">
-                                                <div className="dayend-paymode-col-count">{count}</div>
-                                                <div className="dayend-paymode-col-amount">{(amt || 0).toFixed(2)}</div>
-                                            </td>
+                                            <td className="dayend-td-amount">{(amt || 0).toFixed(2)}</td>
                                         </tr>
                                     );
                                 })}
-                                <tr className="dayend-total-row">
-                                    <td className="dayend-td-particular dayend-bold-text">Total</td>
-                                    <td className="dayend-td-paymode-combined">
-                                        <div className="dayend-paymode-col-count dayend-bold-text">
-                                            {Object.values(reportData.paymodeDetail || {}).reduce((sum, item) => sum + (typeof item === 'object' ? (item.receiptCount || 0) : 0), 0)}
-                                        </div>
-                                        <div className="dayend-paymode-col-amount dayend-bold-text">
-                                            {Object.values(reportData.paymodeDetail || {}).reduce((sum, item) => sum + (typeof item === 'object' ? item.amount : item), 0).toFixed(2)}
-                                        </div>
-                                    </td>
-                                </tr>
 
                                 {/* SETTLEMENT DETAIL SECTION */}
                                 <tr className="dayend-section-head">
-                                    <td colSpan="2">SETTLEMENT DETAIL</td>
+                                    <td className="dayend-td-particular dayend-section-title"><strong>SETTLEMENT DETAIL</strong></td>
+                                    <td className="dayend-td-amount"></td>
                                 </tr>
-                                <tr>
-                                    <td className="dayend-td-particular">Cash Total</td>
+                                <tr className="dayend-data-row">
+                                    <td className="dayend-td-particular">Cash</td>
                                     <td className="dayend-td-amount">{(reportData.settlementDetail?.cashTotal || 0).toFixed(2)}</td>
                                 </tr>
-                                <tr>
-                                    <td className="dayend-td-particular">Other Total</td>
-                                    <td className="dayend-td-amount">{(reportData.settlementDetail?.otherTotal || 0).toFixed(2)}</td>
+                                <tr className="dayend-data-row">
+                                    <td className="dayend-td-particular">Card</td>
+                                    <td className="dayend-td-amount">{(reportData.settlementDetail?.cardTotal || 0).toFixed(2)}</td>
                                 </tr>
-                                <tr className="dayend-total-row">
-                                    <td className="dayend-td-particular dayend-bold-text">Total</td>
-                                    <td className="dayend-td-amount dayend-bold-text">
-                                        {((reportData.settlementDetail?.cashTotal || 0) + (reportData.settlementDetail?.otherTotal || 0)).toFixed(2)}
-                                    </td>
+                                <tr className="dayend-data-row">
+                                    <td className="dayend-td-particular">Other</td>
+                                    <td className="dayend-td-amount">{(reportData.settlementDetail?.otherTotal || 0).toFixed(2)}</td>
                                 </tr>
 
                                 {/* ANALYSIS SECTION */}
                                 <tr className="dayend-section-head">
-                                    <td colSpan="2">ANALYSIS</td>
+                                    <td className="dayend-td-particular dayend-section-title"><strong>ANALYSIS</strong></td>
+                                    <td className="dayend-td-amount"></td>
                                 </tr>
-                                <tr>
+                                <tr className="dayend-data-row">
                                     <td className="dayend-td-particular">Sales Amount</td>
                                     <td className="dayend-td-amount">{(reportData.analysis?.salesAmount || 0).toFixed(2)}</td>
                                 </tr>
-                                <tr>
+                                <tr className="dayend-data-row">
                                     <td className="dayend-td-particular">No of Bills</td>
                                     <td className="dayend-td-amount">{reportData.analysis?.noOfBills || 0}</td>
                                 </tr>
-                                <tr>
-                                    <td className="dayend-td-particular">Avg/Bill</td>
+                                <tr className="dayend-data-row">
+                                    <td className="dayend-td-particular">Average Per Bill</td>
                                     <td className="dayend-td-amount">{(reportData.analysis?.avgPerBill || 0).toFixed(2)}</td>
                                 </tr>
 
                                 {/* VOID DETAIL SECTION */}
                                 <tr className="dayend-section-head">
-                                    <td colSpan="2">VOID DETAIL</td>
+                                    <td className="dayend-td-particular dayend-section-title"><strong>VOID DETAIL</strong></td>
+                                    <td className="dayend-td-amount"></td>
                                 </tr>
-                                <tr>
-                                    <td className="dayend-td-particular">Void Item Qty</td>
+                                <tr className="dayend-data-row">
+                                    <td className="dayend-td-particular">Void Item Quantity</td>
                                     <td className="dayend-td-amount">{reportData.voidDetail?.voidItemQty || 0}</td>
                                 </tr>
-                                <tr>
+                                <tr className="dayend-data-row">
                                     <td className="dayend-td-particular">Void Item Amount</td>
                                     <td className="dayend-td-amount">{(reportData.voidDetail?.voidItemAmount || 0).toFixed(2)}</td>
                                 </tr>

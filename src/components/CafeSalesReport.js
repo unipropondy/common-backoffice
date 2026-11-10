@@ -1,13 +1,15 @@
 import { BASE_URL } from "../config/config";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import * as XLSX from "xlsx";
 import "./CafeSalesReport.css";
+import SalesReportChart from "./SalesReportChart";
 
 const API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
   ? 'http://localhost:3000'
   : (process.env.REACT_APP_API_URL || BASE_URL);
 const REPORT_BASE = `${API_BASE}/api/reports`;
 
-const getCompactHeaderLabel = (colName) => {
+const getCompactHeaderLabel = (colName, currentReport = "") => {
   if (!colName) return '';
   const labelMap = {
     InvoiceDate: 'DATE',
@@ -32,9 +34,12 @@ const getCompactHeaderLabel = (colName) => {
     Dishname: 'DISH NAME',
     CategoryName: 'CATEGORY',
     Category: 'CATEGORY',
-    DishGroupName: 'GROUP',
-    DishGroupname: 'GROUP',
-    DishGroup: 'GROUP',
+    DishGroupName: 'ITEM / DISH GROUP',
+    DishGroupname: 'ITEM / DISH GROUP',
+    DishGroup: 'ITEM / DISH GROUP',
+    'Item / Dish Group Name': 'ITEM / DISH GROUP',
+    SalesAmount: 'SALES AMOUNT',
+    'Sales Amount': 'SALES AMOUNT',
     Quantity: 'QTY',
     Qty: 'QTY',
     Sold: 'QTY',
@@ -45,7 +50,7 @@ const getCompactHeaderLabel = (colName) => {
     TotalSales: 'TOTAL',
     Type: 'TYPE',
     NetTotal: 'TOTAL',
-    PaymentMode: 'PAYMENT MODE',
+    PaymentMode: 'PAY MODE',
     NetAmount: 'NET AMOUNT',
     OrderNo: 'ORDER NO',
     Discount: 'DISC',
@@ -75,11 +80,13 @@ const getCompactHeaderLabel = (colName) => {
     ContributionPct: 'CONT %',
     TotalDiscount: 'DISC',
     'Service Charge': 'SVC',
-    'S.Chrg': 'SVC',
-    'Total Tax': 'GST',
-    TaxTotal: 'GST',
-    Tax: 'GST',
-    GST: 'GST',
+    'Total Tax': 'GST 9%',
+    TaxTotal: 'GST 9%',
+    Tax: 'GST 9%',
+    GST: 'GST 9%',
+    'GST 9%': 'GST 9%',
+    TaxableAmount: 'TAXABLE',
+    Taxable: 'TAXABLE',
     'Net Total': 'TOTAL',
     TotalAmount: 'TOTAL',
     TotalSales: 'TOTAL SALES',
@@ -123,6 +130,7 @@ const getCompactHeaderLabel = (colName) => {
     DiscountId: 'DISC ID',
     Discountid: 'DISC ID',
     InvoiceNo: 'INV NO',
+    No: 'NO',
     Rank: 'RANK',
     SalesAmount: 'SALES AMOUNT',
     QtySold: 'QTY SOLD',
@@ -138,9 +146,27 @@ const getCompactHeaderLabel = (colName) => {
     'Sales Amount': 'AMT',
     'Contribution %': 'CONT %',
     'Void Qty': 'VOID QTY',
-    'Void Amount': 'VOID AMT'
+    'Void Amount': 'VOID AMT',
+    CashIn: 'CASH IN',
+    CashOut: 'CASH OUT',
+    TransactionNo: 'TRANS NO',
+    TransactionType: 'TYPE',
+    PaymentMode: 'PAY MODE',
+    Reason: 'REASON'
   };
   const clean = colName.trim();
+  if (currentReport === "Analysis" && (clean === "CategoryName" || clean === "Category")) {
+    return "CATEGORY NAME";
+  }
+  if (currentReport === "QtyDetail" && (clean === "DishGroup" || clean === "DishGroupName" || clean === "DishGroupname" || clean === "Item / Dish Group Name")) {
+    return "DISH";
+  }
+  if (clean === "Avg/Bill" || clean === "AvgBill") {
+    return "AVG/BILL";
+  }
+  if (clean === "Avg/Pax" || clean === "AvgPax") {
+    return "AVG/PAX";
+  }
   return labelMap[clean] || labelMap[colName] || clean.toUpperCase();
 };
 
@@ -161,7 +187,8 @@ const getColumnAlignment = (colName) => {
     c === 'pax' || c === 'totalpax' || c === 'bills' || c === 'noofbills' || c === 'totalbills' || c === 'billcount' || c === 'discount' || c === 'servicecharge' || c === 'totaltax' || c === 'tax' || c === 'gst' || c === 'roundoff' || c === 'rounding' || c === 'rndoff' || c === 'tips' || c === 'foc' || c === 'netsales' || c === 'itemsales' || c === 'itemdisc' || c === 'billdisc' || c === 'contributionpct' || c === 'salespct' || c === 'contribution%' ||
     c === 'cash' || c === 'nets' || c === 'paynow' || c === 'upi' || c === 'member' || c === 'credit' || c === 'online' || c === 'yeahpaypaynow' || c === 'yeahpaycard' || c === 'others' ||
     c === 'avgbill' || c === 'avgpax' || c === 'avg/bill' || c === 'avg/pax' ||
-    c === 'sales' || c === 'rnd' || c === 'digital' || c === 'dishprice' || c === 'rank' || c === 'cancelledamount' || c === 'subtot' || c === 'disc' || c === 'svc' || c === 'taxableamount' || c === 'totaldiscount' || c === 'totalitemdisc' || c === 'totalbilldisc' || c === 'itemdiscount' || c === 'billdiscount'
+    c === 'sales' || c === 'rnd' || c === 'digital' || c === 'dishprice' || c === 'rank' || c === 'cancelledamount' || c === 'subtot' || c === 'disc' || c === 'svc' || c === 'taxableamount' || c === 'totaldiscount' || c === 'totalitemdisc' || c === 'totalbilldisc' || c === 'itemdiscount' || c === 'billdiscount' ||
+    c === 'cashin' || c === 'cashout'
   ) {
     return 'right';
   }
@@ -173,7 +200,7 @@ const getColumnAlignment = (colName) => {
 const getIsTextCol = (c) => {
   if (!c) return false;
   const lower = c.toLowerCase().replace(/[\s_\-\.]/g, '');  // strip spaces, underscores, hyphens AND dots
-  if (lower === 'discountid' || lower === 'orderid' || lower === 'oderid' || lower === 'billno' || lower === 'billnumber' || lower === 'orderno' || lower === 'orderdatetime') {
+  if (lower === 'discountid' || lower === 'orderid' || lower === 'oderid' || lower === 'billno' || lower === 'billnumber' || lower === 'orderno' || lower === 'orderdatetime' || lower === 'hour' || lower === 'date' || lower === 'time' || lower === 'ordertime' || lower === 'canceltime' || lower === 'invoicedate' || lower === 'canceldate' || lower === 'orderdate') {
     return true;
   }
   const numericKeywords = [
@@ -200,6 +227,7 @@ const getIsCountCol = (c) => {
     lower.includes('pax') ||
     lower === 'sold' ||
     lower === 'rank' ||
+    lower === 'no' ||
     lower.includes('count') ||
     lower.includes('transactions')
   );
@@ -231,35 +259,137 @@ const validateDateNotFuture = (val) => {
   return val;
 };
 
+const STORAGE_KEY = "unipro_sales_report_state";
+
+const loadSavedState = () => {
+  try {
+    const raw = sessionStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch (e) {
+    return null;
+  }
+};
+
 const CafeSalesReport = ({
   salesData = [],
   columns: initialColumns = ["Hour", "Qty", "Amount"],
   sidebarOpen = false
 }) => {
+  const savedState = useRef(loadSavedState()).current;
   const today = getTodayStr();
-  const [fromDate, setFromDateState] = useState(today);
-  const [toDate, setToDateState] = useState(today);
+  const [fromDate, setFromDateState] = useState(savedState?.fromDate || today);
+  const [toDate, setToDateState] = useState(savedState?.toDate || today);
 
   const setFromDate = (val) => setFromDateState(validateDateNotFuture(val));
   const setToDate = (val) => setToDateState(validateDateNotFuture(val));
   const [columns, setColumns] = useState(initialColumns);
-  const [orderSales, setOrderSales] = useState("");
-  const [dayEnd, setDayEnd] = useState("");
-  const [bySales, setBySales] = useState("");
-  const [byItem, setByItem] = useState("");
-  const [showChart, setShowChart] = useState(false);
+  const [orderSales, setOrderSales] = useState(savedState?.orderSales || "");
+  const [dayEnd, setDayEnd] = useState(savedState?.dayEnd || "");
+  const [bySales, setBySales] = useState(savedState?.bySales || "");
+  const [byItem, setByItem] = useState(savedState?.byItem || "");
+  const [systemDate, setSystemDate] = useState(savedState?.systemDate || false);
+  const prevDatesRef = useRef({ from: savedState?.fromDate || today, to: savedState?.toDate || today });
+
+  const handleSystemDateChange = (checked) => {
+    setSystemDate(checked);
+    if (checked) {
+      prevDatesRef.current = { from: fromDate, to: toDate };
+      const curToday = getTodayStr();
+      setFromDate(curToday);
+      setToDate(curToday);
+    } else {
+      if (prevDatesRef.current.from && prevDatesRef.current.to) {
+        setFromDate(prevDatesRef.current.from);
+        setToDate(prevDatesRef.current.to);
+      }
+    }
+  };
+
+  const handleOrderSalesChange = (val) => {
+    setOrderSales(val);
+    if (!val) {
+      if (systemDate) {
+        setSystemDate(false);
+        if (prevDatesRef.current.from && prevDatesRef.current.to) {
+          setFromDate(prevDatesRef.current.from);
+          setToDate(prevDatesRef.current.to);
+        }
+      }
+    }
+  };
+
+  const [topNLimit, setTopNLimit] = useState(savedState?.topNLimit || "10"); // Top 10 by default
+  const [showChart, setShowChart] = useState(savedState?.showChart || false);
+  const [activeShowChart, setActiveShowChart] = useState(savedState?.activeShowChart || false);
+  const [selectedChartType, setSelectedChartType] = useState(savedState?.selectedChartType || null); // 'bar' | 'line' | null
+  const [appliedFilters, setAppliedFilters] = useState(savedState?.appliedFilters || {
+    fromDate: savedState?.fromDate || today,
+    toDate: savedState?.toDate || today,
+    orderSales: savedState?.orderSales || "",
+    dayEnd: savedState?.dayEnd || "",
+    bySales: savedState?.bySales || "",
+    byItem: savedState?.byItem || "",
+    category: savedState?.category || "",
+    dishGroup: savedState?.dishGroup || "",
+    topNLimit: savedState?.topNLimit || "10"
+  });
   const [postDate, setPostDate] = useState(false);
-  const [category, setCategory] = useState("");
-  const [dishGroup, setDishGroup] = useState("");
+  const [category, setCategory] = useState(savedState?.category || "");
+  const [dishGroup, setDishGroup] = useState(savedState?.dishGroup || "");
   const [outputType, setOutputType] = useState("Screen");
   const [isSearched, setIsSearched] = useState(false);
   const [selectedCategoryId, setSelectedCategoryId] = useState("");
   const [selectedCategoryName, setSelectedCategoryName] = useState("");
   const [localData, setLocalData] = useState([]);
   const [grandTotal, setGrandTotal] = useState(0);
+  const [performanceData, setPerformanceData] = useState(null);
+  const [paymodeData, setPaymodeData] = useState(null);
   const [summaryData, setSummaryData] = useState(null);
   const [companyInfo, setCompanyInfo] = useState(null);
-  const [topNSort, setTopNSort] = useState("SalesAmountDesc");
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const abortControllerRef = useRef(null);
+  const [sortColumn, setSortColumn] = useState("SalesAmount");
+  const [sortDirection, setSortDirection] = useState("desc");
+  const [downloadDropdownOpen, setDownloadDropdownOpen] = useState(false);
+  const downloadDropdownRef = useRef(null);
+  const hasAutoLoadedRef = useRef(false);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (downloadDropdownRef.current && !downloadDropdownRef.current.contains(event.target)) {
+        setDownloadDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  // Keep topNSort in sync for backward compatibility
+  const topNSort = `${sortColumn}${sortDirection === "asc" ? "Asc" : "Desc"}`;
+  const setTopNSort = (val) => {
+    if (typeof val === 'function') {
+      const next = val(topNSort);
+      if (next.endsWith("Asc")) {
+        setSortColumn(next.replace("Asc", ""));
+        setSortDirection("asc");
+      } else if (next.endsWith("Desc")) {
+        setSortColumn(next.replace("Desc", ""));
+        setSortDirection("desc");
+      }
+    } else if (typeof val === 'string') {
+      if (val.endsWith("Asc")) {
+        setSortColumn(val.replace("Asc", ""));
+        setSortDirection("asc");
+      } else if (val.endsWith("Desc")) {
+        setSortColumn(val.replace("Desc", ""));
+        setSortDirection("desc");
+      }
+    }
+  };
 
   const [categoryList, setCategoryList] = useState([]);
   const [dishGroupList, setDishGroupList] = useState([]);
@@ -373,194 +503,224 @@ const CafeSalesReport = ({
     }
   }, [selectedCategoryId]);
 
+  const getReportUrl = (formatType = "pdf") => {
+    let url = "";
+
+    // Read applied filters to ensure exact synchronization
+    const reqFrom = appliedFilters.fromDate || fromDate;
+    const reqTo = appliedFilters.toDate || toDate;
+    const reqDayEnd = appliedFilters.dayEnd || dayEnd;
+    const reqByItem = appliedFilters.byItem || byItem;
+    const reqBySales = appliedFilters.bySales || bySales;
+    const reqOrderSales = appliedFilters.orderSales || orderSales;
+    const reqCategory = appliedFilters.category !== undefined ? appliedFilters.category : category;
+    const reqDishGroup = appliedFilters.dishGroup !== undefined ? appliedFilters.dishGroup : dishGroup;
+
+    // ✅ Guest Meal Report - ADD THIS FIRST
+    if (reqDayEnd === "GuestMeal") {
+      url = `${REPORT_BASE}/download-pdf?fromDate=${reqFrom}&toDate=${reqTo}&reportType=GuestMeal`;
+    }
+
+    // ✅ GST Report
+    else if (reqDayEnd === "GST") {
+      url = `${REPORT_BASE}/download-pdf?fromDate=${reqFrom}&toDate=${reqTo}&dayEnd=GST`;
+    }
+
+    // ✅ Paymode Report
+    else if (reqDayEnd === "Paymode") {
+      url = `${REPORT_BASE}/download-pdf?fromDate=${reqFrom}&toDate=${reqTo}&dayEnd=Paymode`;
+    }
+
+    // ✅ Terminal Report
+    else if (reqDayEnd === "Terminal") {
+      url = `${REPORT_BASE}/terminal-html?fromDate=${reqFrom}&toDate=${reqTo}`;
+    }
+
+    // ✅ Transaction Report
+    else if (reqDayEnd === "Transaction") {
+      url = `${REPORT_BASE}/download-pdf?fromDate=${reqFrom}&toDate=${reqTo}&dayEnd=Transaction`;
+    }
+
+    // ✅ Table Change Report
+    else if (reqDayEnd === "TableChange") {
+      url = `${REPORT_BASE}/download-pdf?fromDate=${reqFrom}&toDate=${reqTo}&dayEnd=TableChange`;
+    }
+    else if (reqDayEnd === "RefundSummary") {
+      url = `${REPORT_BASE}/download-pdf?fromDate=${reqFrom}&toDate=${reqTo}&dayEnd=RefundSummary`;
+    }
+    else if (reqDayEnd === "DiscountSummary") {
+      url = `${REPORT_BASE}/download-pdf?fromDate=${reqFrom}&toDate=${reqTo}&dayEnd=DiscountSummary`;
+    }
+    else if (reqDayEnd === "DiscountDetail") {
+      url = `${REPORT_BASE}/download-pdf?fromDate=${reqFrom}&toDate=${reqTo}&dayEnd=DiscountDetail`;
+    }
+    else if (reqDayEnd === "TopNItems") {
+      const activeTopN = appliedFilters.topNLimit || topNLimit || "10";
+      url = `${REPORT_BASE}/download-pdf?fromDate=${reqFrom}&toDate=${reqTo}&dayEnd=TopNItems&topN=${activeTopN}&sortBy=${topNSort}`;
+    }
+
+    // ✅ ADD CANCEL ORDER REPORT HERE
+    else if (reqDayEnd === "Cancellation") {
+      url = `${REPORT_BASE}/download-pdf?fromDate=${reqFrom}&toDate=${reqTo}&dayEnd=Cancellation`;
+    }
+
+    // ✅ MONTH Report (By Item)
+    else if (reqByItem === "Month") {
+      url = `${REPORT_BASE}/download-pdf?fromDate=${reqFrom}&toDate=${reqTo}&byItem=Month`;
+      if (reqCategory) url += `&category=${encodeURIComponent(reqCategory)}`;
+      if (reqDishGroup) url += `&dishGroup=${encodeURIComponent(reqDishGroup)}`;
+    }
+
+    // ✅ QTY Report (By Item)
+    else if (reqByItem === "QtyGroup") {
+      url = `${REPORT_BASE}/download-pdf?fromDate=${reqFrom}&toDate=${reqTo}&byItem=QtyGroup`;
+    }
+    else if (reqByItem === "QtyDetail") {
+      url = `${REPORT_BASE}/download-pdf?fromDate=${reqFrom}&toDate=${reqTo}&byItem=QtyDetail`;
+    }
+    else if (reqByItem === "Qty") {
+      url = `${REPORT_BASE}/download-pdf?fromDate=${reqFrom}&toDate=${reqTo}&byItem=Qty`;
+      if (reqCategory) url += `&category=${encodeURIComponent(reqCategory)}`;
+      if (reqDishGroup) url += `&dishGroup=${encodeURIComponent(reqDishGroup)}`;
+    }
+
+    // ✅ Category Sales Report (By Item)
+    else if (reqByItem === "Category") {
+      url = `${REPORT_BASE}/download-pdf?fromDate=${reqFrom}&toDate=${reqTo}&byItem=Category`;
+      if (reqCategory) url += `&category=${encodeURIComponent(reqCategory)}`;
+      if (reqDishGroup) url += `&dishGroup=${encodeURIComponent(reqDishGroup)}`;
+    }
+
+    // ✅ Dish Group Sales Report (By Item)
+    else if (reqByItem === "DishGroup") {
+      url = `${REPORT_BASE}/download-pdf?fromDate=${reqFrom}&toDate=${reqTo}&byItem=DishGroup`;
+      if (reqCategory) url += `&category=${encodeURIComponent(reqCategory)}`;
+      if (reqDishGroup) url += `&dishGroup=${encodeURIComponent(reqDishGroup)}`;
+    }
+
+    // ✅ Dish Sales Report (By Item)
+    else if (reqByItem === "Dish") {
+      url = `${REPORT_BASE}/download-pdf?fromDate=${reqFrom}&toDate=${reqTo}&byItem=Dish`;
+      if (reqCategory) url += `&category=${encodeURIComponent(reqCategory)}`;
+      if (reqDishGroup) url += `&dishGroup=${encodeURIComponent(reqDishGroup)}`;
+    }
+
+    // ✅ Summary Report (By Sales)
+    else if (reqBySales === "Summary") {
+      url = `${REPORT_BASE}/download-pdf?fromDate=${reqFrom}&toDate=${reqTo}&bySales=Summary`;
+    }
+
+    // ✅ Business Type Report
+    else if (reqBySales === "BusinessType") {
+      url = `${REPORT_BASE}/download-pdf?fromDate=${reqFrom}&toDate=${reqTo}&bySales=BusinessType`;
+    }
+
+    // ✅ Meal Period Report
+    else if (reqBySales === "MealPeriod") {
+      url = `${REPORT_BASE}/download-pdf?fromDate=${reqFrom}&toDate=${reqTo}&bySales=MealPeriod`;
+    }
+
+    // ✅ Sales Analysis Report
+    else if (reqBySales === "Analysis") {
+      url = `${REPORT_BASE}/download-pdf?fromDate=${reqFrom}&toDate=${reqTo}&bySales=Analysis`;
+    }
+
+    // ✅ Journal Report (By Sales)
+    else if (reqBySales === "Journal") {
+      url = `${REPORT_BASE}/download-pdf?fromDate=${reqFrom}&toDate=${reqTo}&bySales=Journal`;
+    }
+
+    // ✅ Order Sales Reports
+    else if (reqDayEnd === "Hourly" || reqOrderSales === "Hourly") {
+      url = `${REPORT_BASE}/download-pdf?fromDate=${reqFrom}&toDate=${reqTo}&dayEnd=Hourly&orderSales=Hourly`;
+    }
+    // ✅ Order Sales Reports
+    else if (reqOrderSales === "Daywise" || reqOrderSales === "Itemwise" || reqOrderSales === "Group" || reqOrderSales === "GroupDetail") {
+      url = `${REPORT_BASE}/download-pdf?fromDate=${reqFrom}&toDate=${reqTo}&orderSales=${reqOrderSales}`;
+      if (reqOrderSales === "Itemwise") {
+        if (reqCategory) url += `&category=${encodeURIComponent(reqCategory)}`;
+        if (reqDishGroup) url += `&dishGroup=${encodeURIComponent(reqDishGroup)}`;
+      }
+    }
+
+    // ✅ Default
+    if (!url) {
+      url = `${REPORT_BASE}/download-pdf?fromDate=${reqFrom}&toDate=${reqTo}`;
+    }
+
+    if (activeShowChart) {
+      url += `${url.includes('?') ? '&' : '?'}showChart=true`;
+      if (selectedChartType) {
+        url += `&chartType=${encodeURIComponent(selectedChartType)}`;
+      }
+    }
+
+    if (sortColumn) {
+      url += `${url.includes('?') ? '&' : '?'}sortColumn=${encodeURIComponent(sortColumn)}&sortDirection=${encodeURIComponent(sortDirection)}`;
+    }
+
+    if (formatType === "html") {
+      url += `${url.includes('?') ? '&' : '?'}format=html`;
+    }
+
+    return url;
+  };
+
+  const handlePrint = async () => {
+    try {
+      const pdfUrl = getReportUrl("pdf");
+      
+      // Fetch the generated PDF as a Blob to ensure reliable native PDF print preview
+      const response = await fetch(pdfUrl);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch report PDF (status ${response.status})`);
+      }
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+
+      let printFrame = document.getElementById("report-pdf-print-frame");
+      if (!printFrame) {
+        printFrame = document.createElement("iframe");
+        printFrame.id = "report-pdf-print-frame";
+        printFrame.style.position = "fixed";
+        printFrame.style.right = "0";
+        printFrame.style.bottom = "0";
+        printFrame.style.width = "0";
+        printFrame.style.height = "0";
+        printFrame.style.border = "0";
+        document.body.appendChild(printFrame);
+      }
+
+      printFrame.onload = () => {
+        try {
+          setTimeout(() => {
+            if (printFrame.contentWindow) {
+              printFrame.contentWindow.focus();
+              printFrame.contentWindow.print();
+            }
+          }, 300);
+        } catch (e) {
+          console.error("Iframe print error, falling back to window:", e);
+          const win = window.open(blobUrl, "_blank");
+          if (win) {
+            win.onload = () => win.print();
+          }
+        }
+      };
+
+      printFrame.src = blobUrl;
+    } catch (err) {
+      console.error("Print error:", err);
+      // Direct window fallback
+      const directUrl = getReportUrl("pdf");
+      window.open(directUrl, "_blank");
+    }
+  };
+
   const handleDownload = async () => {
     try {
-      console.log("=== HANDLE DOWNLOAD CALLED ===");
-      console.log("byItem:", byItem);
-      console.log("orderSales:", orderSales);
-      console.log("dayEnd:", dayEnd);
-      console.log("category:", category);
-      console.log("dishGroup:", dishGroup);
-
-      let url = "";
-
-      // ✅ Guest Meal Report - ADD THIS FIRST
-      if (dayEnd === "GuestMeal") {
-        url = `${REPORT_BASE}/download-pdf?fromDate=${fromDate}&toDate=${toDate}&reportType=GuestMeal`;
-        window.open(url, '_blank');
-        return;
-      }
-
-      // ✅ GST Report
-      if (dayEnd === "GST") {
-        url = `${REPORT_BASE}/download-pdf?fromDate=${fromDate}&toDate=${toDate}&dayEnd=GST`;
-        window.open(url, '_blank');
-        return;
-      }
-
-      // ✅ Paymode Report
-      if (dayEnd === "Paymode") {
-        // Use download-pdf with dayEnd=Paymode (backend will handle pivoted format)
-        url = `${REPORT_BASE}/download-pdf?fromDate=${fromDate}&toDate=${toDate}&dayEnd=Paymode`;
-        window.open(url, '_blank');
-        return;
-      }
-
-      // ✅ Terminal Report
-      if (dayEnd === "Terminal") {
-        url = `${REPORT_BASE}/terminal-html?fromDate=${fromDate}&toDate=${toDate}`;
-        window.open(url, '_blank');
-        return;
-      }
-
-      // ✅ Transaction Report
-      if (dayEnd === "Transaction") {
-        url = `${REPORT_BASE}/download-pdf?fromDate=${fromDate}&toDate=${toDate}&dayEnd=Transaction`;
-        window.open(url, '_blank');
-        return;
-      }
-
-      // ✅ Table Change Report
-      if (dayEnd === "TableChange") {
-        url = `${REPORT_BASE}/download-pdf?fromDate=${fromDate}&toDate=${toDate}&dayEnd=TableChange`;
-        window.open(url, '_blank');
-        return;
-      }
-      if (dayEnd === "RefundSummary") {
-        url = `${REPORT_BASE}/download-pdf?fromDate=${fromDate}&toDate=${toDate}&dayEnd=RefundSummary`;
-        window.open(url, '_blank');
-        return;
-      }
-      if (dayEnd === "DiscountSummary") {
-        url = `${REPORT_BASE}/download-pdf?fromDate=${fromDate}&toDate=${toDate}&dayEnd=DiscountSummary`;
-        window.open(url, '_blank');
-        return;
-      }
-      if (dayEnd === "TopNItems") {
-        url = `${REPORT_BASE}/download-pdf?fromDate=${fromDate}&toDate=${toDate}&dayEnd=TopNItems&sortBy=${topNSort}`;
-        window.open(url, '_blank');
-        return;
-      }
-
-
-      // ✅ ADD CANCEL ORDER REPORT HERE
-      if (dayEnd === "Cancellation") {
-        url = `${REPORT_BASE}/download-pdf?fromDate=${fromDate}&toDate=${toDate}&dayEnd=Cancellation`;
-        window.open(url, '_blank');
-        return;
-      }
-
-      if (dayEnd === "GST") {
-        url = `${REPORT_BASE}/download-pdf?fromDate=${fromDate}&toDate=${toDate}&dayEnd=GST`;
-        console.log("Downloading GST Report:", url);
-        window.open(url, '_blank');
-        return;
-      }
-
-
-      // ✅ MONTH Report (By Item) - IMPORTANT
-      if (byItem === "Month") {
-        url = `${REPORT_BASE}/download-pdf?fromDate=${fromDate}&toDate=${toDate}&byItem=Month`;
-        if (category) url += `&category=${encodeURIComponent(category)}`;
-        if (dishGroup) url += `&dishGroup=${encodeURIComponent(dishGroup)}`;
-        console.log("Downloading MONTH Report:", url);
-        window.open(url, '_blank');
-        return;
-      }
-
-      // ✅ QTY Report (By Item) - IMPORTANT
-      if (byItem === "Qty") {
-        url = `${REPORT_BASE}/download-pdf?fromDate=${fromDate}&toDate=${toDate}&byItem=Qty`;
-        if (category) url += `&category=${encodeURIComponent(category)}`;
-        if (dishGroup) url += `&dishGroup=${encodeURIComponent(dishGroup)}`;
-        console.log("Downloading QTY Report:", url);
-        window.open(url, '_blank');
-        return;
-      }
-
-      // ✅ Category Sales Report (By Item)
-      if (byItem === "Category") {
-        url = `${REPORT_BASE}/download-pdf?fromDate=${fromDate}&toDate=${toDate}&byItem=Category`;
-        if (category) url += `&category=${encodeURIComponent(category)}`;
-        if (dishGroup) url += `&dishGroup=${encodeURIComponent(dishGroup)}`;
-        console.log("Downloading CATEGORY Sales Report:", url);
-        window.open(url, '_blank');
-        return;
-      }
-
-      // ✅ Dish Group Sales Report (By Item)
-      if (byItem === "DishGroup") {
-        url = `${REPORT_BASE}/download-pdf?fromDate=${fromDate}&toDate=${toDate}&byItem=DishGroup`;
-        if (category) url += `&category=${encodeURIComponent(category)}`;
-        if (dishGroup) url += `&dishGroup=${encodeURIComponent(dishGroup)}`;
-        console.log("Downloading DISH GROUP Sales Report:", url);
-        window.open(url, '_blank');
-        return;
-      }
-
-      // ✅ Dish Sales Report (By Item)
-      if (byItem === "Dish") {
-        url = `${REPORT_BASE}/download-pdf?fromDate=${fromDate}&toDate=${toDate}&byItem=Dish`;
-        if (category) url += `&category=${encodeURIComponent(category)}`;
-        if (dishGroup) url += `&dishGroup=${encodeURIComponent(dishGroup)}`;
-        console.log("Downloading DISH Sales Report:", url);
-        window.open(url, '_blank');
-        return;
-      }
-
-      // ✅ Summary Report (By Sales)
-      if (bySales === "Summary") {
-        url = `${REPORT_BASE}/download-pdf?fromDate=${fromDate}&toDate=${toDate}&bySales=Summary`;
-        window.open(url, '_blank');
-        return;
-      }
-
-      // ✅ Business Type Report
-      if (bySales === "BusinessType") {
-        url = `${REPORT_BASE}/download-pdf?fromDate=${fromDate}&toDate=${toDate}&bySales=BusinessType`;
-        window.open(url, '_blank');
-        return;
-      }
-
-      // ✅ Meal Period Report
-      if (bySales === "MealPeriod") {
-        url = `${REPORT_BASE}/download-pdf?fromDate=${fromDate}&toDate=${toDate}&bySales=MealPeriod`;
-        window.open(url, '_blank');
-        return;
-      }
-
-
-      // ✅ Sales Analysis Report
-      if (bySales === "Analysis") {
-        url = `${REPORT_BASE}/download-pdf?fromDate=${fromDate}&toDate=${toDate}&bySales=Analysis`;
-        window.open(url, '_blank');
-        return;
-      }
-
-      // ✅ Journal Report (By Sales) - ADD THIS
-      if (bySales === "Journal") {
-        url = `${REPORT_BASE}/download-pdf?fromDate=${fromDate}&toDate=${toDate}&bySales=Journal`;
-        window.open(url, '_blank');
-        return;
-      }
-
-      // ✅ Order Sales Reports
-      const selectedOrderSales = orderSales;
-      if (selectedOrderSales === "Hourly" || selectedOrderSales === "Daywise" || selectedOrderSales === "Itemwise" || selectedOrderSales === "Group") {
-        url = `${REPORT_BASE}/download-pdf?fromDate=${fromDate}&toDate=${toDate}&orderSales=${selectedOrderSales}`;
-        if (selectedOrderSales === "Itemwise") {
-          if (category) url += `&category=${encodeURIComponent(category)}`;
-          if (dishGroup) url += `&dishGroup=${encodeURIComponent(dishGroup)}`;
-        }
-        console.log("Downloading Order Sales Report:", url);
-        window.open(url, '_blank');
-        return;
-      }
-
-      // ✅ Default
-      url = `${REPORT_BASE}/download-pdf?fromDate=${fromDate}&toDate=${toDate}`;
+      const url = getReportUrl("pdf");
       window.open(url, '_blank');
-
     } catch (err) {
       console.error("Download error:", err);
       alert("Error opening report: " + err.message);
@@ -575,12 +735,44 @@ const CafeSalesReport = ({
 
     const noSelectionMade = !orderSales && !dayEnd && !bySales && !byItem;
     if (noSelectionMade) {
-      alert("Please select a report type (Order reports / Day end reports / Sales reports / Item reports)");
+      alert("Please select a report type (Day end reports / Sales reports / Item reports)");
       return;
     }
 
+    // Abort previous in-flight request if user clicks Find again
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setIsSearched(true);
-    setLocalData([]);
+    setIsLoading(true);
+    setErrorMessage("");
+    setActiveShowChart(showChart);
+    const filtersToSave = {
+      fromDate,
+      toDate,
+      orderSales,
+      dayEnd,
+      bySales,
+      byItem,
+      category,
+      dishGroup,
+      topNLimit,
+      showChart,
+      activeShowChart: showChart,
+      selectedChartType,
+      systemDate
+    };
+    setAppliedFilters(filtersToSave);
+
+    // Requirement 2: Persist selected report & filters in sessionStorage so refresh retains the exact report
+    try {
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(filtersToSave));
+    } catch (e) {
+      console.warn("Could not save report state to sessionStorage", e);
+    }
 
     let url = `${REPORT_BASE}/salesreport?fromDate=${fromDate}&toDate=${toDate}`;
 
@@ -589,12 +781,20 @@ const CafeSalesReport = ({
       url += `&reportType=GuestMeal`;
       console.log("✅ Guest Meal Report Selected");
     }
-    // ✅ IMPORTANT: Check byItem FIRST (Month & Qty)
+    // ✅ IMPORTANT: Check byItem FIRST (Month, QtyDetail, Qty & QtyGroup)
     else if (byItem === "Month") {
       url += `&byItem=Month`;
       if (category) url += `&category=${encodeURIComponent(category)}`;
       if (dishGroup) url += `&dishGroup=${encodeURIComponent(dishGroup)}`;
       console.log("✅ Month Report Selected");
+    }
+    else if (byItem === "QtyDetail") {
+      url += `&byItem=QtyDetail`;
+      console.log("✅ Monthly Sales Detail (QtyDetail) Selected");
+    }
+    else if (byItem === "QtyGroup") {
+      url += `&byItem=QtyGroup`;
+      console.log("✅ Quantity Sales Detail (QtyGroup) Selected");
     }
     else if (byItem === "Qty") {
       url += `&byItem=Qty`;
@@ -672,9 +872,13 @@ const CafeSalesReport = ({
       url += `&dayEnd=DiscountSummary`;
       console.log("✅ Discount Summary Report Selected");
     }
+    else if (dayEnd === "DiscountDetail") {
+      url += `&dayEnd=DiscountDetail`;
+      console.log("✅ Discount Sales Detail Report Selected");
+    }
     else if (dayEnd === "TopNItems") {
-      url += `&dayEnd=TopNItems`;
-      console.log("✅ Top N Items Report Selected");
+      url += `&dayEnd=TopNItems&topN=${topNLimit || "10"}`;
+      console.log("✅ Top N Items Report Selected, limit:", topNLimit || "10");
     }
 
     else if (dayEnd === "Cancellation") {
@@ -686,8 +890,8 @@ const CafeSalesReport = ({
       console.log("✅ GST Report Selected");
     }
     // Finally orderSales
-    else if (orderSales === "Hourly") {
-      url += `&orderSales=Hourly`;
+    else if (dayEnd === "Hourly" || orderSales === "Hourly") {
+      url += `&dayEnd=Hourly&orderSales=Hourly`;
       console.log("✅ Hourly Report Selected");
     }
     else if (orderSales === "Daywise") {
@@ -704,12 +908,24 @@ const CafeSalesReport = ({
       url += `&orderSales=Group`;
       console.log("✅ Group Report Selected");
     }
+    else if (orderSales === "GroupDetail") {
+      url += `&orderSales=GroupDetail`;
+      console.log("✅ Group Detail Report Selected");
+    }
 
     console.log("Final URL:", url);
 
     try {
-      const res = await fetch(url);
+      const res = await fetch(url, { signal: controller.signal });
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => null);
+        throw new Error(errJson?.error || `Server responded with status ${res.status}`);
+      }
       const data = await res.json();
+
+      if (data && data.error) {
+        throw new Error(data.error);
+      }
 
       console.log("API Response:", data);
 
@@ -734,6 +950,7 @@ const CafeSalesReport = ({
         setLocalData([]);
         setColumns([]);
         setGrandTotal(0);
+    setPerformanceData(null);
         setSummaryData(null);
         return;
       }
@@ -756,39 +973,94 @@ const CafeSalesReport = ({
       }
       // ✅ MONTHWISE SALES REPORT - must run before the generic Year/Month fallback
       else if (byItem === "Month") {
-        console.log("Processing Month wise sales report");
+        console.log("Processing Monthly Sales Summary report");
 
         const monthRows = rawData.filter(row => !row.isTotalRow && !row.isGrandTotal && row.Date !== 'Grand Total:' && row.Date !== 'TOTAL');
 
-        forcedColumns = ['Date', 'DishName', 'DishGroup', 'Category', 'DishPrice', 'Qty', 'Amount'];
+        forcedColumns = ['Date', 'DishGroup', 'DishPrice'];
         forcedData = monthRows.map(row => ({
           Date: row.Date || '-',
-          DishName: row.DishName || '-',
           DishGroup: row.DishGroupName || row.DishGroup || '-',
-          Category: row.CategoryName || row.Category || '-',
           DishPrice: Number(row.DishPrice || 0).toFixed(2),
-          Qty: Number(row.Qty || 0).toFixed(0),
-          Amount: Number(row.Amount || 0).toFixed(2),
           isTotalRow: false
         }));
+
+        forcedData.push({
+          Date: 'Grand Total:',
+          DishGroup: '-',
+          DishPrice: '',
+          isTotalRow: true,
+          isGrandTotal: true
+        });
+      }
+      else if (byItem === "QtyDetail") {
+        console.log("Processing Monthly Sales Detail (QtyDetail) report");
+
+        const detailRows = rawData.filter(row => !row.isTotalRow && !row.isGrandTotal && row.Date !== 'Grand Total:' && row.Date !== 'TOTAL');
+
+        forcedColumns = ['Date', 'DishGroup', 'DishName'];
+        forcedData = detailRows.map(row => ({
+          Date: row.Date || '-',
+          DishGroup: row.DishGroup || row.DishGroupName || '-',
+          DishName: row.DishName || '-',
+          isTotalRow: false
+        }));
+
+        forcedData.push({
+          Date: 'Grand Total:',
+          DishGroup: '-',
+          DishName: '-',
+          isTotalRow: true,
+          isGrandTotal: true
+        });
+      }
+      else if (byItem === "QtyGroup") {
+        console.log("Processing Quantity Sales Detail (QtyGroup) report");
+
+        const detailRows = rawData.filter(row => !row.isTotalRow && !row.isGrandTotal && row.DishName !== 'Grand Total:' && row.DishName !== 'TOTAL');
+        let totalQtySold = 0;
+
+        forcedColumns = ['DishName', 'QtySold'];
+        forcedData = detailRows.map(row => {
+          const qty = parseInt(row.QtySold || row.Qty || row.Quantity || 0) || 0;
+          totalQtySold += qty;
+          return {
+            DishName: row.DishName || row.Dishname || '-',
+            QtySold: qty,
+            isTotalRow: false
+          };
+        });
+
+        forcedData.push({
+          DishName: 'Grand Total:',
+          QtySold: totalQtySold,
+          isTotalRow: true,
+          isGrandTotal: true
+        });
       }
       else if (byItem === "Qty") {
-        console.log("Processing Quantity Sales report");
+        console.log("Processing Quantity Sales Summary report");
 
-        const qtyRows = rawData.filter(row => !row.isTotalRow && !row.isGrandTotal && row.DishName !== 'Grand Total:' && row.DishName !== 'TOTAL');
+        const qtyRows = rawData.filter(row => !row.isTotalRow && !row.isGrandTotal && row.DishGroupName !== 'Grand Total:' && row.DishGroupName !== 'TOTAL');
+        let totalQtySold = 0;
 
-        forcedColumns = ['CategoryName', 'DishGroupName', 'DishName', 'DishPrice', 'QtySold', 'LineAmount'];
-        forcedData = qtyRows.map(row => ({
-          CategoryName: row.CategoryName || '-',
-          DishGroupName: row.DishGroupName || row.DishGroup || '-',
-          DishName: row.DishName || '-',
-          BillCount: Number(row.BillCount || row.billCount || 0),
-          OverallTotalBills: Number(row.OverallTotalBills || row.TotalBills || 0),
-          DishPrice: Number(row.DishPrice || row.dishPrice || 0).toFixed(2),
-          QtySold: Number(row.QtySold || row.qtySold || row.Qty || row.qty || 0).toFixed(0),
-          LineAmount: Number(row.LineAmount || row.lineAmount || row.Amount || row.amount || 0).toFixed(2),
-          isTotalRow: false
-        }));
+        forcedColumns = ['DishGroupName', 'QtySold'];
+        forcedData = qtyRows.map(row => {
+          const qty = parseInt(row.QtySold || row.qtySold || row.Qty || row.qty || 0) || 0;
+          totalQtySold += qty;
+          return {
+            DishGroupName: row.DishGroupName || row.DishGroup || '-',
+            QtySold: qty,
+            isTotalRow: false
+          };
+        });
+
+        forcedData.push({
+          DishGroupName: 'Grand Total:',
+          QtySold: totalQtySold,
+          isTotalRow: true,
+          isGrandTotal: true
+        });
       }
 
       // ✅ QTY/MONTH Report - Check for Year and Month columns
@@ -845,7 +1117,7 @@ const CafeSalesReport = ({
           isGrandTotal: true
         });
 
-        forcedColumns = ['CancelDate', 'CancelTime', 'OrderNo', 'BillNumber', 'CancelledAmount', 'VoidQty', 'VoidAmount', 'CancelReason', 'CancelledBy'];
+        forcedColumns = ['CancelDate', 'CancelTime', 'BillNumber', 'CancelledAmount', 'VoidQty', 'VoidAmount', 'CancelReason', 'CancelledBy'];
         forcedData = rows;
       }
 
@@ -900,15 +1172,18 @@ const CafeSalesReport = ({
       else if (dayEnd === "TopNItems") {
         console.log("Processing Top N Items Report");
         forcedColumns = ['Rank', 'DishName', 'QtySold', 'SalesAmount', 'SalesPct'];
-        const totalSalesAmount = rawData.reduce((sum, r) => sum + (parseFloat(r.SalesAmount || 0) || 0), 0);
-        forcedData = rawData.map(row => {
+        const isAll = (topNLimit === "all" || topNLimit === "All");
+        const limitCount = isAll ? rawData.length : (parseInt(topNLimit || "10", 10) || 10);
+        const slicedRaw = isAll ? rawData : rawData.slice(0, limitCount);
+        const totalSalesAmount = slicedRaw.reduce((sum, r) => sum + (parseFloat(r.SalesAmount || 0) || 0), 0);
+        forcedData = slicedRaw.map((row, idx) => {
           const itemSalesAmt = parseFloat(row.SalesAmount || 0) || 0;
           const rawPct = parseFloat(String(row.SalesPct ?? '').replace('%', ''));
           const pctVal = !isNaN(rawPct)
             ? rawPct
             : (totalSalesAmount > 0 ? (itemSalesAmt / totalSalesAmount) * 100 : 0);
           return {
-            Rank: Number(row.Rank || 0),
+            Rank: Number(row.Rank || (idx + 1)),
             DishName: row.DishName || '',
             QtySold: Number(row.QtySold || 0).toFixed(0),
             SalesAmount: itemSalesAmt.toFixed(2),
@@ -924,10 +1199,13 @@ const CafeSalesReport = ({
         let sumTax = 0;
         let sumTotal = 0;
 
-        const rows = rawData.map(row => {
+        // Filter out any existing grand total rows from backend
+        const detailRows = rawData.filter(row => !row.isTotalRow && !row.isGrandTotal && row.Date !== 'Grand Total:' && row.Date !== 'TOTAL');
+
+        const rows = detailRows.map(row => {
           const bills = Number(row.Bills || row.TotalBills || 0);
           const taxable = Number(row.TaxableAmount || row.TotalSales || 0);
-          const tax = Number(row.TotalTax || 0);
+          const tax = Number(row['GST 9%'] !== undefined && row['GST 9%'] !== null ? row['GST 9%'] : (row.TotalTax !== undefined && row.TotalTax !== null ? row.TotalTax : (row.GST || 0)));
           const total = Number(row.TotalAmount || 0);
 
           sumBills += bills;
@@ -935,33 +1213,28 @@ const CafeSalesReport = ({
           sumTax += tax;
           sumTotal += total;
 
-          const taxRateVal = parseFloat(String(row.TaxRate || 9).replace('%', '')) || 9;
-
           return {
             Date: row.Date || '',
-            GstType: row.GstType || 'Standard GST',
-            TaxRate: taxRateVal.toFixed(2) + '%',
             Bills: bills,
             TaxableAmount: taxable.toFixed(2),
-            TotalTax: tax.toFixed(2),
+            'GST 9%': tax.toFixed(2),
             TotalAmount: total.toFixed(2),
             isTotalRow: false
           };
         });
 
-        // Add Grand Total row
+        // Add single Grand Total row
         rows.push({
           Date: 'Grand Total:',
-          GstType: '-',
-          TaxRate: '-',
           Bills: sumBills,
           TaxableAmount: sumTaxable.toFixed(2),
-          TotalTax: sumTax.toFixed(2),
+          'GST 9%': sumTax.toFixed(2),
           TotalAmount: sumTotal.toFixed(2),
-          isTotalRow: true
+          isTotalRow: true,
+          isGrandTotal: true
         });
 
-        forcedColumns = ['Date', 'GstType', 'TaxRate', 'Bills', 'TaxableAmount', 'TotalTax', 'TotalAmount'];
+        forcedColumns = ['Date', 'Bills', 'TaxableAmount', 'GST 9%', 'TotalAmount'];
         forcedData = rows;
       }
       // ✅ DISCOUNT SUMMARY REPORT
@@ -1002,7 +1275,6 @@ const CafeSalesReport = ({
             ServiceCharge: svc,
             TotalTax: tax,
             TotalAmount: totalAmount,
-            Description: row.Description || 'General Discount',
             isTotalRow: false
           };
         });
@@ -1018,12 +1290,169 @@ const CafeSalesReport = ({
           ServiceCharge: sumSVC,
           TotalTax: sumTax,
           TotalAmount: sumTotalAmount,
-          Description: '-',
           isTotalRow: true
         });
 
-        forcedColumns = ['InvoiceDate', 'InvoiceNo', 'SubTotal', 'Discount', 'ItemDiscount', 'BillDiscount', 'ServiceCharge', 'TotalTax', 'TotalAmount', 'Description'];
+        forcedColumns = ['InvoiceDate', 'InvoiceNo', 'SubTotal', 'Discount', 'ItemDiscount', 'BillDiscount', 'ServiceCharge', 'TotalTax', 'TotalAmount'];
         forcedData = rows;
+      }
+      // ✅ DISCOUNT SALES DETAIL REPORT
+      else if (dayEnd === "DiscountDetail") {
+        console.log("Processing Discount Detail Report");
+        forcedColumns = ['DishName', 'Quantity', 'Price', 'Amount', 'SVC', 'Tax', 'Total'];
+
+        // If backend already returned mapped hierarchical rows, use them directly
+        if (rawData.some(r => r.isDateHeader || r.isOrderHeader)) {
+          forcedData = rawData;
+        } else {
+          const detailRows = rawData.filter(r => !r.isTotalRow && !r.isGrandTotal && !r.isDateHeader && !r.isOrderHeader);
+
+          const dateMap = new Map();
+          detailRows.forEach(r => {
+            const d = r.OrderDate || '-';
+            if (!dateMap.has(d)) dateMap.set(d, new Map());
+            const orderKey = r.OrderId || `${r.OrderNumber}_${r.InvoiceNo}`;
+            const orderMap = dateMap.get(d);
+            if (!orderMap.has(orderKey)) {
+              orderMap.set(orderKey, {
+                orderNumber: r.OrderNumber || r.InvoiceNo || '-',
+                invoiceNo: r.InvoiceNo || r.OrderNumber || '-',
+                discount: Number(r.OrderDiscount || 0),
+                items: []
+              });
+            }
+            orderMap.get(orderKey).items.push(r);
+          });
+
+          const mapped = [];
+          let grandQty = 0;
+          let grandAmount = 0;
+          let grandSVC = 0;
+          let grandTax = 0;
+          let grandTotal = 0;
+
+          dateMap.forEach((orders, dateStr) => {
+            // Date Header Row
+            mapped.push({
+              DishName: dateStr,
+              Quantity: '',
+              Price: '',
+              Amount: '',
+              SVC: '',
+              Tax: '',
+              Total: '',
+              isDateHeader: true,
+              isTotalRow: false
+            });
+
+            let dayQty = 0;
+            let dayAmount = 0;
+            let daySVC = 0;
+            let dayTax = 0;
+            let dayTotal = 0;
+
+            orders.forEach((orderData) => {
+              // Order Header Row
+              const orderTitle = `${orderData.orderNumber} ${orderData.invoiceNo} Discount :`;
+              mapped.push({
+                DishName: orderTitle,
+                Quantity: '',
+                Price: '',
+                Amount: '',
+                SVC: '',
+                Tax: '',
+                Total: orderData.discount.toFixed(2),
+                isOrderHeader: true,
+                isTotalRow: false
+              });
+
+              let orderQty = 0;
+              let orderAmount = 0;
+              let orderSVC = 0;
+              let orderTax = 0;
+              let orderTotal = 0;
+
+              orderData.items.forEach(item => {
+                const q = Number(item.Quantity || 0);
+                const p = Number(item.Price || 0);
+                const a = Number(item.Amount || (q * p));
+                const s = Number(item.SVC || 0);
+                const t = Number(item.Tax || 0);
+                const tot = Number(item.Total || (a + s + t));
+
+                orderQty += q;
+                orderAmount += a;
+                orderSVC += s;
+                orderTax += t;
+                orderTotal += tot;
+
+                mapped.push({
+                  DishName: item.DishName || '-',
+                  Quantity: q,
+                  Price: p,
+                  Amount: a,
+                  SVC: s,
+                  Tax: t,
+                  Total: tot,
+                  isTotalRow: false
+                });
+              });
+
+              // Order Total Row
+              mapped.push({
+                DishName: 'Order Total',
+                Quantity: orderQty,
+                Price: '',
+                Amount: orderAmount,
+                SVC: orderSVC,
+                Tax: orderTax,
+                Total: orderTotal,
+                isOrderTotal: true,
+                isTotalRow: true
+              });
+
+              dayQty += orderQty;
+              dayAmount += orderAmount;
+              daySVC += orderSVC;
+              dayTax += orderTax;
+              dayTotal += orderTotal;
+            });
+
+            // Day Total Row
+            mapped.push({
+              DishName: 'Day Total',
+              Quantity: dayQty,
+              Price: '',
+              Amount: dayAmount,
+              SVC: daySVC,
+              Tax: dayTax,
+              Total: dayTotal,
+              isDayTotal: true,
+              isTotalRow: true
+            });
+
+            grandQty += dayQty;
+            grandAmount += dayAmount;
+            grandSVC += daySVC;
+            grandTax += dayTax;
+            grandTotal += dayTotal;
+          });
+
+          // Grand Total Row
+          mapped.push({
+            DishName: 'Grand Total',
+            Quantity: grandQty,
+            Price: '',
+            Amount: grandAmount,
+            SVC: grandSVC,
+            Tax: grandTax,
+            Total: grandTotal,
+            isGrandTotal: true,
+            isTotalRow: true
+          });
+
+          forcedData = mapped;
+        }
       }
       else if (dayEnd === "TableChange") {
         console.log("Processing Table Change Report");
@@ -1045,7 +1474,7 @@ const CafeSalesReport = ({
 
         const monthRows = rawData.filter(row => !row.isTotalRow && !row.isGrandTotal && row.Date !== 'Grand Total:' && row.Date !== 'TOTAL');
 
-        forcedColumns = ['Date', 'DishName', 'DishGroup', 'Category', 'DishPrice', 'Qty', 'Amount'];
+        forcedColumns = ['Date', 'DishGroup', 'DishPrice', 'Qty', 'Amount'];
         forcedData = monthRows.map(row => ({
           Date: row.Date || '-',
           DishName: row.DishName || '-',
@@ -1197,27 +1626,26 @@ const CafeSalesReport = ({
       // ✅ SALES JOURNAL REPORT
       else if (bySales === "Journal") {
         console.log("Processing Sales Journal Report");
-        forcedColumns = ['OrderId', 'SubTotal', 'Discount', 'ServiceCharge', 'TotalTax', 'Tips', 'TotalPax', 'GstType', 'RoundOff'];
+        forcedColumns = ['OrderNo', 'SubTotal', 'Discount', 'ServiceCharge', 'TotalTax', 'Tips', 'TotalPax', 'RoundOff'];
         forcedData = rawData.map(row => {
           const rawPax = row.TotalPax !== undefined && row.TotalPax !== null && row.TotalPax !== '' ? parseInt(row.TotalPax) : 0;
           return {
-            OrderId: row.OrderId || row.orderId || '-',
+            OrderNo: row.OrderNo || row.BillNo || '-',
             SubTotal: Number(row.SubTotal || 0).toFixed(2),
             Discount: Number(row.Discount || 0).toFixed(2),
             ServiceCharge: Number(row.ServiceCharge || 0).toFixed(2),
             TotalTax: Number(row.TotalTax || 0).toFixed(2),
             Tips: Number(row.Tips || 0).toFixed(2),
-            TotalPax: rawPax > 0 ? rawPax : 'N/A',
-            GstType: row.GstType || '',
+            TotalPax: rawPax > 0 ? rawPax : 0,
             RoundOff: Number(row.RoundOff || 0).toFixed(2),
             NetAmount: Number(row.NetAmount || 0),
             isTotalRow: false
           };
         });
       }
-      // ✅ SALES ANALYSIS REPORT - Simplified, showing only needed columns
+      // ✅ SALES PERFORMANCE REPORT - Date-aggregated Analysis
       else if (bySales === "Analysis") {
-        console.log("Processing Sales Analysis Report");
+        console.log("Processing Sales Performance Report");
         console.log("Raw Data Sample:", rawData.slice(0, 3));
 
         const detailRows = rawData.filter(r => !r.isTotalRow && !r.isGrandTotal && r.Date !== 'Grand Total:' && r.Date !== 'Grand Total');
@@ -1231,6 +1659,7 @@ const CafeSalesReport = ({
         let totalNetTotal = 0;
 
         const analysisRows = detailRows.map(row => {
+          const categoryName = row.CategoryName || row.Category || '-';
           const bills = Number(row['No of Bills'] || row.Bills || row.BillCount || 0);
           const pax = Number(row.Pax || 0);
           const subTotal = Number(row['Sub Total'] || row.SubTotal || 0);
@@ -1252,15 +1681,23 @@ const CafeSalesReport = ({
 
           return {
             Date: row.Date || '-',
+            CategoryName: categoryName,
+            Category: categoryName,
+            Bills: bills,
             'No of Bills': bills,
-            'Pax': pax,
+            BillCount: bills,
+            Pax: pax,
             'Sub Total': subTotal,
+            SubTotal: subTotal,
             Discount: discount,
             SVC: svc,
             GST: gst,
             'Net Total': netTotal,
-            'Avg/Bill': avgBill,
+            NetTotal: netTotal,
+            'Avg/Bill': Number(avgBill.toFixed(2)),
+            AvgBill: Number(avgBill.toFixed(2)),
             'Avg/Pax': avgPax,
+            AvgPax: avgPax,
             isTotalRow: false
           };
         });
@@ -1272,20 +1709,28 @@ const CafeSalesReport = ({
         // Add ONLY ONE Grand Total row
         analysisRows.push({
           Date: 'Grand Total:',
+          CategoryName: '',
+          Category: '',
+          Bills: totalBills,
           'No of Bills': totalBills,
-          'Pax': totalPax,
+          BillCount: totalBills,
+          Pax: totalPax,
           'Sub Total': totalSubTotal,
+          SubTotal: totalSubTotal,
           Discount: totalDiscount,
           SVC: totalSVC,
           GST: totalGST,
           'Net Total': totalNetTotal,
-          'Avg/Bill': grandAvgBill,
+          NetTotal: totalNetTotal,
+          'Avg/Bill': Number(grandAvgBill.toFixed(2)),
+          AvgBill: Number(grandAvgBill.toFixed(2)),
           'Avg/Pax': grandAvgPax,
+          AvgPax: grandAvgPax,
           isTotalRow: true,
           isGrandTotal: true
         });
 
-        forcedColumns = ['Date', 'No of Bills', 'Pax', 'Sub Total', 'Discount', 'SVC', 'GST', 'Net Total', 'Avg/Bill', 'Avg/Pax'];
+        forcedColumns = ['Date', 'CategoryName', 'Bills', 'Pax', 'Sub Total', 'Discount', 'SVC', 'GST', 'Net Total', 'Avg/Bill', 'Avg/Pax'];
         forcedData = analysisRows;
       }
 
@@ -1339,13 +1784,13 @@ const CafeSalesReport = ({
         // Add ONLY ONE Grand Total row
         categoryRows.push({
           CategoryName: 'Grand Total:',
-          BillCount: (fromDate === '2026-08-18' && toDate === '2026-08-18') ? 32 : overallUniqueBills,
-          Sold: (fromDate === '2026-08-18' && toDate === '2026-08-18') ? 54 : totalSold,
+          BillCount: overallUniqueBills,
+          Sold: totalSold,
           ItemSales: totalItemSales,
           ItemDisc: totalItemDisc,
-          BillDisc: (fromDate === '2026-08-18' && toDate === '2026-08-18') ? 58.50 : totalBillDisc,
+          BillDisc: totalBillDisc,
           FOC: totalFOC,
-          NetSales: (fromDate === '2026-08-18' && toDate === '2026-08-18') ? 978.72 : totalNetSales,
+          NetSales: totalNetSales,
           ContributionPct: '100.00%',
           isTotalRow: true,
           isGrandTotal: true
@@ -1455,13 +1900,13 @@ const CafeSalesReport = ({
         dishGroupRows.push({
           DishGroupname: 'Grand Total:',
           CategoryName: '',
-          BillCount: (fromDate === '2026-08-18' && toDate === '2026-08-18') ? 32 : overallUniqueBills,
-          Sold: (fromDate === '2026-08-18' && toDate === '2026-08-18') ? 54 : totalSold,
+          BillCount: overallUniqueBills,
+          Sold: totalSold,
           ItemSales: totalItemSales,
           ItemDisc: totalItemDisc,
-          BillDisc: (fromDate === '2026-08-18' && toDate === '2026-08-18') ? 58.50 : totalBillDisc,
+          BillDisc: totalBillDisc,
           FOC: totalFOC,
-          NetSales: (fromDate === '2026-08-18' && toDate === '2026-08-18') ? 978.72 : totalNetSales,
+          NetSales: totalNetSales,
           ContributionPct: '100.00%',
           isTotalRow: true,
           isGrandTotal: true
@@ -1590,13 +2035,13 @@ const CafeSalesReport = ({
 
         dishRows.push({
           Dishname: 'Grand Total:',
-          BillCount: (fromDate === '2026-08-18' && toDate === '2026-08-18') ? 32 : overallUniqueBills,
-          Sold: (fromDate === '2026-08-18' && toDate === '2026-08-18') ? 54 : totalSold,
+          BillCount: overallUniqueBills,
+          Sold: totalSold,
           ItemSales: totalItemSales,
           ItemDisc: totalItemDisc,
-          BillDisc: (fromDate === '2026-08-18' && toDate === '2026-08-18') ? 58.50 : totalBillDisc,
+          BillDisc: totalBillDisc,
           FOC: totalFOC,
-          NetSales: (fromDate === '2026-08-18' && toDate === '2026-08-18') ? 978.72 : totalNetSales,
+          NetSales: totalNetSales,
           isTotalRow: true,
           isGrandTotal: true
         });
@@ -1747,10 +2192,70 @@ const CafeSalesReport = ({
 
 
 
+      // Itemwise report
+      else if (orderSales === "Itemwise") {
+        forcedColumns = ['Item', 'Qty', 'Amount'];
+        forcedData = rawData.map(row => ({
+          Item: row.Item || '-',
+          Qty: Number(row.Qty || 0),
+          Amount: Number(row.Amount || 0).toFixed(2)
+        }));
+      }
       // Hourly report
-      else if (data.columns && data.columns.includes('Hour') && data.columns.includes('Amount')) {
-        forcedColumns = ['Hour', 'Qty', 'Amount'];
-        forcedData = rawData;
+      else if (dayEnd === "Hourly" || orderSales === "Hourly" || (data.columns && data.columns.includes('Hour') && data.columns.includes('Amount'))) {
+        forcedColumns = ['Date', 'Hour', 'Qty', 'Amount'];
+        // Filter out separate date subtotal rows ("Total:"), populate Date with actual date, and keep single Grand Total row
+        const cleanData = [];
+        let grandTotalFound = false;
+
+        rawData.forEach(row => {
+          if (row.isDateTotal || row.Date === 'Total:' || row.Date === 'TOTAL') {
+            return; // completely remove separate date subtotal row from screen view
+          }
+          if (row.isGrandTotal || row.Date === 'Grand Total:') {
+            if (!grandTotalFound) {
+              cleanData.push({
+                ...row,
+                Date: 'Grand Total:',
+                Hour: row.Hour || '',
+                Qty: row.Qty !== undefined ? Number(row.Qty) : 0,
+                Amount: row.Amount !== undefined ? Number(row.Amount) : 0,
+                isTotalRow: true,
+                isGrandTotal: true
+              });
+              grandTotalFound = true;
+            }
+            return;
+          }
+
+          // Legitimate hourly data row: ensure actual transaction date (RawDate or Date) is displayed
+          const actualDate = row.RawDate || row.Date || '';
+          cleanData.push({
+            ...row,
+            Date: actualDate,
+            Hour: row.Hour || '',
+            Qty: row.Qty !== undefined ? Number(row.Qty) : 0,
+            Amount: row.Amount !== undefined ? Number(row.Amount) : 0,
+            isTotalRow: false,
+            isGrandTotal: false
+          });
+        });
+
+        // If no Grand Total row was provided in rawData, calculate and append it dynamically
+        if (!grandTotalFound && cleanData.length > 0) {
+          const totQty = cleanData.reduce((sum, r) => sum + (Number(r.Qty) || 0), 0);
+          const totAmt = cleanData.reduce((sum, r) => sum + (Number(r.Amount) || 0), 0);
+          cleanData.push({
+            Date: 'Grand Total:',
+            Hour: '',
+            Qty: totQty,
+            Amount: data.grandTotal !== undefined && data.grandTotal !== null ? Number(data.grandTotal) : totAmt,
+            isTotalRow: true,
+            isGrandTotal: true
+          });
+        }
+
+        forcedData = cleanData;
       }
       // Daywise report
       else if (data.columns && data.columns.includes('No of Bills')) {
@@ -1769,63 +2274,127 @@ const CafeSalesReport = ({
       setLocalData(forcedData);
       setColumns(forcedColumns);
       setGrandTotal(data.grandTotal || 0);
+      setPerformanceData(data.performanceData || null);
+      setPaymodeData(data.paymodeBreakdown || null);
 
     } catch (error) {
+      if (error.name === "AbortError") {
+        console.log("Fetch aborted for previous request");
+        return;
+      }
       console.error("Error fetching data:", error);
-      alert("Error fetching report data. Check server connection.");
+      setErrorMessage(error.message || "Failed to load report data. Please check server connection.");
+      setLocalData([]);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  // Reset search state and clear data when any filter/parameter changes
+  // Reset search state and clear data when any filter/parameter changes (except during initial auto-load of saved state)
   useEffect(() => {
+    if (!hasAutoLoadedRef.current) return;
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
     setIsSearched(false);
+    setIsLoading(false);
+    setErrorMessage("");
     setLocalData([]);
+    setPaymodeData(null);
   }, [orderSales, dayEnd, bySales, byItem, fromDate, toDate, category, dishGroup]);
 
+  // Requirement 2: Auto-run handleFind once on mount if a report was previously selected before refresh
+  useEffect(() => {
+    if (!hasAutoLoadedRef.current) {
+      hasAutoLoadedRef.current = true;
+      if (savedState && (savedState.orderSales || savedState.dayEnd || savedState.bySales || savedState.byItem)) {
+        handleFind();
+      }
+    }
+  }, []);
+
   const handleClear = () => {
+    try {
+      sessionStorage.removeItem(STORAGE_KEY);
+    } catch (e) {
+      console.warn("Could not clear sessionStorage", e);
+    }
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
     setOrderSales("");
     setDayEnd("");
     setBySales("");
     setByItem("");
+    setSystemDate(false);
     setShowChart(false);
+    setActiveShowChart(false);
+    setSelectedChartType(null);
+    setAppliedFilters({
+      fromDate: today,
+      toDate: today,
+      orderSales: "",
+      dayEnd: "",
+      bySales: "",
+      byItem: "",
+      category: "",
+      dishGroup: "",
+      topNLimit: "10"
+    });
+    setTopNLimit("10");
     setPostDate(false);
     setIsSearched(false);
+    setIsLoading(false);
+    setErrorMessage("");
     setOutputType("Screen");
     setLocalData([]);
     setCategory("");
     setDishGroup("");
     setGrandTotal(0);
     setSummaryData(null);
+    setPaymodeData(null);
   };
 
   let displayData = localData.length > 0 ? localData : salesData;
-  if (dayEnd === "TopNItems" && displayData.length > 0) {
-    const dataRows = displayData.filter(r => !r.isTotalRow);
-    const totalRows = displayData.filter(r => r.isTotalRow);
+  const isHierarchicalGrouped = displayData.some(r => r.isCategoryHeader || r.isDishGroupHeader || r.isDateHeader || r.isOrderHeader) || (appliedFilters.dayEnd || dayEnd) === "DiscountDetail";
+
+  if (sortColumn && displayData.length > 0 && !isHierarchicalGrouped) {
+    const dataRows = displayData.filter(r => !r.isTotalRow && !r.isGrandTotal && !r.isCategoryHeader && !r.isDishGroupHeader && !r.isSpacer);
+    const otherRows = displayData.filter(r => r.isTotalRow || r.isGrandTotal || r.isCategoryHeader || r.isDishGroupHeader || r.isSpacer);
 
     dataRows.sort((a, b) => {
-      if (topNSort === "SalesAmountDesc") {
-        return parseFloat(b.SalesAmount || 0) - parseFloat(a.SalesAmount || 0);
-      } else if (topNSort === "SalesAmountAsc") {
-        return parseFloat(a.SalesAmount || 0) - parseFloat(b.SalesAmount || 0);
-      } else if (topNSort === "QtySoldDesc") {
-        return parseInt(b.QtySold || 0) - parseInt(a.QtySold || 0);
-      } else if (topNSort === "QtySoldAsc") {
-        return parseInt(a.QtySold || 0) - parseInt(b.QtySold || 0);
-      } else if (topNSort === "DishNameAsc") {
-        return (a.DishName || "").localeCompare(b.DishName || "");
-      } else if (topNSort === "DishNameDesc") {
-        return (b.DishName || "").localeCompare(a.DishName || "");
+      let valA = a[sortColumn];
+      let valB = b[sortColumn];
+
+      if (valA === undefined || valA === null) valA = '';
+      if (valB === undefined || valB === null) valB = '';
+
+      const cleanA = typeof valA === 'string' ? valA.trim().replace(/^[$%,\s]+|[$%,\s]+$/g, '') : valA;
+      const cleanB = typeof valB === 'string' ? valB.trim().replace(/^[$%,\s]+|[$%,\s]+$/g, '') : valB;
+
+      const numA = parseFloat(cleanA);
+      const numB = parseFloat(cleanB);
+      const isNumA = cleanA !== '' && !isNaN(numA);
+      const isNumB = cleanB !== '' && !isNaN(numB);
+
+      let comparison = 0;
+      if (isNumA && isNumB) {
+        comparison = numA - numB;
+      } else {
+        comparison = String(valA).localeCompare(String(valB), undefined, { numeric: true, sensitivity: 'base' });
       }
-      return 0;
+
+      return sortDirection === 'desc' ? -comparison : comparison;
     });
 
-    // Re-assign Rank (1, 2, 3...) based on new sorted order
-    dataRows.forEach((r, idx) => {
-      r.Rank = idx + 1;
-    });
+    // Re-assign Rank (1, 2, 3...) if Rank column exists and not sorting by Rank
+    if (dayEnd === "TopNItems" && sortColumn !== "Rank") {
+      dataRows.forEach((r, idx) => {
+        r.Rank = idx + 1;
+      });
+    }
 
-    displayData = [...dataRows, ...totalRows];
+    displayData = [...dataRows, ...otherRows];
   }
   const displayColumns = localData.length > 0 ? columns : initialColumns;
   const hasData = displayData.length > 0;
@@ -1838,30 +2407,22 @@ const CafeSalesReport = ({
 
       <div className="filter-section">
         <div className="filter-row">
-          <div className="filter-group">
-            <label className="tb-label">Order reports</label>
-            <select className={orderSales ? "has-value" : ""} value={orderSales} onChange={(e) => setOrderSales(e.target.value)}>
-              <option value="">-- Select --</option>
-              <option value="Itemwise">Itemwise Sales</option>
-              <option value="Hourly">Hourly Sales</option>
-              <option value="Group">Group Sales</option>
-              <option value="Daywise">Daywise Sales</option>
-            </select>
-          </div>
+
           <div className="filter-group">
             <label className="tb-label">Day end reports</label>
             <select className={dayEnd ? "has-value" : ""} value={dayEnd} onChange={(e) => setDayEnd(e.target.value)}>
               <option value="">-- Select --</option>
               <option value="Paymode">Payment Collection</option>
-              <option value="Terminal">Terminal Summary</option>
               <option value="Transaction">Transaction Summary</option>
               <option value="GST">Tax Summary</option>
               <option value="GuestMeal">Guest Summary</option>
               <option value="DiscountSummary">Discount Report</option>
+              <option value="DiscountDetail">Discount Detail Report</option>
               <option value="TopNItems">Top Selling Items</option>
               <option value="RefundSummary">Refund Report</option>
               <option value="TableChange">Table Transfer</option>
               <option value="Cancellation">Cancelled Orders</option>
+              <option value="Hourly">Hourly Sales</option>
 
             </select>
           </div>
@@ -1884,11 +2445,13 @@ const CafeSalesReport = ({
               setDishGroup("");
             }}>
               <option value="">-- Select --</option>
-              <option value="Month">Monthly Item Sales</option>
-              <option value="Qty">Quantity Sales</option>
-              <option value="Category">Category Performance</option>
-              <option value="DishGroup">Dish Group Performance</option>
-              <option value="Dish">Dish Performance</option>
+              <option value="Month">Monthly Sales Summary</option>
+              <option value="QtyDetail">Monthly Sales Detail</option>
+              <option value="Qty">Quantity Sales Summary</option>
+              <option value="QtyGroup">Quantity Sales Detail</option>
+              <option value="Category">Category Sales</option>
+              <option value="Dish">Dish Sales</option>
+              <option value="DishGroup">Disgroup Sales</option>
             </select>
           </div>
           <div className="filter-group">
@@ -1901,18 +2464,20 @@ const CafeSalesReport = ({
           </div>
 
           <div className="filter-actions">
-            <button className="find-btn" onClick={handleFind}>Find</button>
-            <button className="clear-btn" onClick={handleClear}>Clear</button>
+            <button className="find-btn" onClick={handleFind} disabled={isLoading} style={isLoading ? { opacity: 0.7, cursor: 'not-allowed' } : {}}>
+              {isLoading ? "Loading..." : "Find"}
+            </button>
+            <button className="clear-btn" onClick={handleClear} disabled={isLoading}>Clear</button>
           </div>
         </div>
 
+        {/* Secondary filters row (Category & Dish Group for item-based reports) */}
         {(orderSales === "Itemwise" ||
           byItem === "Month" ||
           byItem === "Qty" ||
           byItem === "Category" ||
           byItem === "DishGroup" ||
           byItem === "Dish") && (
-
             <div className="filter-row secondary-filters">
               <div className="filter-group">
                 <label className="tb-label">Category</label>
@@ -1961,8 +2526,101 @@ const CafeSalesReport = ({
                   </button>
                 </div>
               </div>
+
+              {/* Checkboxes beside category/dish group when secondary filters are open */}
+              <div className="filter-group checkbox-filter-group" style={{ flex: '0 0 auto', justifyContent: 'flex-end', alignItems: 'center', gap: '18px', paddingBottom: '10px' }}>
+                {Boolean(orderSales) && (
+                  <label className="sales-system-date-label" htmlFor="sales-report-system-date-item">
+                    <input
+                      id="sales-report-system-date-item"
+                      className="sales-system-date-checkbox"
+                      type="checkbox"
+                      checked={systemDate}
+                      onChange={(e) => handleSystemDateChange(e.target.checked)}
+                    />
+                    System Date
+                  </label>
+                )}
+                <label className="sales-show-chart-label" htmlFor="sales-report-show-chart-item">
+                  <input
+                    id="sales-report-show-chart-item"
+                    className="sales-show-chart-checkbox"
+                    type="checkbox"
+                    checked={showChart}
+                    onChange={(e) => setShowChart(e.target.checked)}
+                  />
+                  Show Chart
+                </label>
+              </div>
             </div>
           )}
+
+        {/* Top Selling Items (Top 10 / Top 20 / All) Secondary Filter Row */}
+        {dayEnd === "TopNItems" && (
+          <div className="filter-row secondary-filters" style={{ alignItems: 'flex-end', paddingTop: '10px', paddingBottom: '10px' }}>
+            <div className="filter-group" style={{ maxWidth: '200px' }}>
+              <label className="tb-label">Top Limit</label>
+              <select
+                className={topNLimit ? "has-value" : ""}
+                value={topNLimit}
+                onChange={(e) => setTopNLimit(e.target.value)}
+              >
+                <option value="10">Top 10</option>
+                <option value="20">Top 20</option>
+                <option value="all">All</option>
+              </select>
+            </div>
+
+            <div className="filter-group checkbox-filter-group" style={{ flex: '1', justifyContent: 'flex-end', alignItems: 'center', gap: '18px', paddingBottom: '6px' }}>
+              <label className="sales-show-chart-label" htmlFor="sales-report-show-chart-topn">
+                <input
+                  id="sales-report-show-chart-topn"
+                  className="sales-show-chart-checkbox"
+                  type="checkbox"
+                  checked={showChart}
+                  onChange={(e) => setShowChart(e.target.checked)}
+                />
+                Show Chart
+              </label>
+            </div>
+          </div>
+        )}
+
+        {/* Checkbox row for supported reports that do NOT have secondary filters */}
+        {!(orderSales === "Itemwise" || byItem === "Month" || byItem === "Qty" || byItem === "Category" || byItem === "DishGroup" || byItem === "Dish" || dayEnd === "TopNItems") &&
+         Boolean(
+           dayEnd === "Hourly" || orderSales === "Hourly" || orderSales === "Daywise" || orderSales === "Group" || orderSales === "GroupDetail" ||
+           dayEnd === "Paymode" ||
+           bySales === "Summary" || bySales === "BusinessType" || bySales === "MealPeriod" ||
+           byItem === "QtyGroup" || byItem === "QtyDetail"
+         ) && (
+          <div className="filter-row secondary-filters" style={{ justifyContent: 'flex-end', paddingTop: '4px', paddingBottom: '8px' }}>
+            <div className="filter-group checkbox-filter-group" style={{ flex: '0 0 auto', justifyContent: 'flex-end', alignItems: 'center', gap: '18px' }}>
+              {Boolean(orderSales) && (
+                <label className="sales-system-date-label" htmlFor="sales-report-system-date-general">
+                  <input
+                    id="sales-report-system-date-general"
+                    className="sales-system-date-checkbox"
+                    type="checkbox"
+                    checked={systemDate}
+                    onChange={(e) => handleSystemDateChange(e.target.checked)}
+                  />
+                  System Date
+                </label>
+              )}
+              <label className="sales-show-chart-label" htmlFor="sales-report-show-chart-general">
+                <input
+                  id="sales-report-show-chart-general"
+                  className="sales-show-chart-checkbox"
+                  type="checkbox"
+                  checked={showChart}
+                  onChange={(e) => setShowChart(e.target.checked)}
+                />
+                Show Chart
+              </label>
+            </div>
+          </div>
+        )}
       </div>
 
       {isSearched && (
@@ -1970,11 +2628,48 @@ const CafeSalesReport = ({
           <div className="professional-report-wrapper">
             {hasData ? (
               <>
+                {/* Dynamic Visual Graph when Show Chart is selected AND Find was clicked */}
+                {activeShowChart && (
+                  <SalesReportChart
+                    reportKey={appliedFilters.orderSales || appliedFilters.dayEnd || appliedFilters.bySales || appliedFilters.byItem || orderSales || dayEnd || bySales || byItem}
+                    reportTitle={
+                      ((appliedFilters.dayEnd || dayEnd) === "Hourly" || (appliedFilters.orderSales || orderSales) === "Hourly") ? "Hourly Sales" :
+                      (appliedFilters.orderSales || orderSales) === "Daywise" ? "Daywise Sales" :
+                      (appliedFilters.orderSales || orderSales) === "Itemwise" ? "Itemwise Sales" :
+                      (appliedFilters.orderSales || orderSales) === "Group" ? "Group Sales" :
+                      (appliedFilters.orderSales || orderSales) === "GroupDetail" ? "Group Sales Detail" :
+                      (appliedFilters.dayEnd || dayEnd) === "Paymode" ? "Payment Collection" :
+                      (appliedFilters.dayEnd || dayEnd) === "Transaction" ? "Transaction Cash" :
+                      (appliedFilters.bySales || bySales) === "Summary" ? "Sales Summary" :
+                      (appliedFilters.byItem || byItem) === "Month" ? "Monthly Sales Summary" :
+                      (appliedFilters.byItem || byItem) === "QtyDetail" ? "Monthly Sales Detail" :
+                      (appliedFilters.byItem || byItem) === "Qty" ? "Quantity Sales Summary" :
+                      (appliedFilters.byItem || byItem) === "QtyGroup" ? "Quantity Sales Detail" :
+                      (appliedFilters.byItem || byItem) === "Category" ? "Category Sales" :
+                      (appliedFilters.byItem || byItem) === "DishGroup" ? "Disgroup Sales" :
+                      (appliedFilters.byItem || byItem) === "Dish" ? "Dish Sales" :
+                      (appliedFilters.dayEnd || dayEnd) === "TopNItems" ? (
+                        (appliedFilters.topNLimit || topNLimit) === "all" ? "Top Selling Items (All)" : `Top ${appliedFilters.topNLimit || topNLimit || "10"} Selling Items`
+                      ) :
+                      (appliedFilters.dayEnd || dayEnd) === "DiscountSummary" ? "Discount Summary" :
+                      (appliedFilters.dayEnd || dayEnd) === "DiscountDetail" ? "Discount Sales Detail" :
+                      (appliedFilters.bySales || bySales) === "BusinessType" ? "Sales by Business Type" :
+                      (appliedFilters.bySales || bySales) === "MealPeriod" ? "Sales by Meal Period" :
+                      (appliedFilters.orderSales || appliedFilters.dayEnd || appliedFilters.bySales || appliedFilters.byItem || orderSales || dayEnd || bySales || byItem || "Sales Report")
+                    }
+                    data={displayData}
+                    fromDate={appliedFilters.fromDate || fromDate}
+                    toDate={appliedFilters.toDate || toDate}
+                    chartType={selectedChartType}
+                    onChartTypeChange={(newType) => setSelectedChartType(newType)}
+                  />
+                )}
+
                 {/* ✅ New KPI Cards for Group Sales Dashboard */}
                 {orderSales === "Group" && (() => {
                   const dataRows = localData.filter(r => !r.isTotalRow);
-                  const totalSales = summaryData ? summaryData.totalSales : dataRows.reduce((sum, r) => sum + (parseFloat(r.Amount) || 0), 0);
-                  const totalQty = summaryData ? summaryData.totalQty : dataRows.reduce((sum, r) => sum + (parseInt(r.Qty) || 0), 0);
+                  const totalSales = dataRows.reduce((sum, r) => sum + (parseFloat(r.Amount) || 0), 0);
+                  const totalQty = dataRows.reduce((sum, r) => sum + (parseInt(r.Qty) || 0), 0);
                   const totalGroups = dataRows.length;
                   const totalBills = dataRows.reduce((sum, r) => sum + (parseInt(r.BillCount || r.Bills || r['No of Bills'] || r.NoOfBills || 0) || 0), 0);
 
@@ -2031,6 +2726,147 @@ const CafeSalesReport = ({
                       <div className="analysis-kpi-card">
                         <div className="analysis-kpi-title">Avg Sales Per Group</div>
                         <div className="analysis-kpi-value">$ {formatNumber(avgSalesPerGroup)}</div>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* ✅ KPI Cards for Group Sales Detail Dashboard */}
+                {orderSales === "GroupDetail" && (() => {
+                  const detailRows = localData.filter(r => !r.isCategoryHeader && !r.isDishGroupHeader && !r.isSpacer && !r.isTotalRow && !r.isGrandTotal && r.Date !== 'Grand Total:');
+                  const totalSales = detailRows.reduce((sum, r) => sum + (parseFloat(r.Amount) || 0), 0);
+                  const totalQty = detailRows.reduce((sum, r) => sum + (parseInt(r.Qty) || 0), 0);
+
+                  let currentCategory = '';
+                  const groupMap = {};
+                  const dishMap = {};
+
+                  localData.forEach(r => {
+                    if (r.isCategoryHeader) {
+                      currentCategory = r.DishGroupname || r.DishName || 'Uncategorized';
+                      if (!groupMap[currentCategory]) {
+                        groupMap[currentCategory] = { name: currentCategory, qty: 0, amount: 0 };
+                      }
+                    } else if (!r.isTotalRow && !r.isGrandTotal && !r.isDishGroupHeader && !r.isSpacer && r.Date !== 'Grand Total:') {
+                      const qty = parseInt(r.Qty) || 0;
+                      const amt = parseFloat(r.Amount) || 0;
+                      if (currentCategory) {
+                        if (!groupMap[currentCategory]) groupMap[currentCategory] = { name: currentCategory, qty: 0, amount: 0 };
+                        groupMap[currentCategory].qty += qty;
+                        groupMap[currentCategory].amount += amt;
+                      }
+                      const dish = r.DishName || '-';
+                      if (!dishMap[dish]) {
+                        dishMap[dish] = { name: dish, qty: 0, amount: 0 };
+                      }
+                      dishMap[dish].qty += qty;
+                      dishMap[dish].amount += amt;
+                    }
+                  });
+
+                  const totalGroups = Object.keys(groupMap).length;
+                  const totalUniqueDishes = Object.keys(dishMap).length;
+
+                  let topSellingGroup = '-';
+                  let topSalesAmount = 0;
+                  let topQtyGroup = '-';
+                  let topQtyVal = 0;
+
+                  Object.values(groupMap).forEach(g => {
+                    if (g.amount > topSalesAmount) {
+                      topSalesAmount = g.amount;
+                      topSellingGroup = g.name;
+                    }
+                    if (g.qty > topQtyVal) {
+                      topQtyVal = g.qty;
+                      topQtyGroup = g.name;
+                    }
+                  });
+
+                  let topSellingDish = '-';
+                  let topDishQty = 0;
+                  Object.values(dishMap).forEach(d => {
+                    if (d.qty > topDishQty) {
+                      topDishQty = d.qty;
+                      topSellingDish = d.name;
+                    }
+                  });
+
+                  const avgSalesPerGroup = totalGroups > 0 ? totalSales / totalGroups : 0;
+
+                  return (
+                    <div className="analysis-kpi-container" style={{ marginBottom: '25px' }}>
+                      <div className="analysis-kpi-card">
+                        <div className="analysis-kpi-title">Total Sales</div>
+                        <div className="analysis-kpi-value">$ {formatNumber(totalSales)}</div>
+                      </div>
+                      <div className="analysis-kpi-card">
+                        <div className="analysis-kpi-title">Total Qty Sold</div>
+                        <div className="analysis-kpi-value">{formatNumber(totalQty, true)}</div>
+                      </div>
+                      <div className="analysis-kpi-card">
+                        <div className="analysis-kpi-title">Total Groups</div>
+                        <div className="analysis-kpi-value">{formatNumber(totalGroups, true)}</div>
+                      </div>
+                      <div className="analysis-kpi-card">
+                        <div className="analysis-kpi-title">Total Dishes</div>
+                        <div className="analysis-kpi-value">{formatNumber(totalUniqueDishes, true)}</div>
+                      </div>
+                      <div className="analysis-kpi-card">
+                        <div className="analysis-kpi-title">Top Selling Group</div>
+                        <div className="analysis-kpi-value">{topSellingGroup}</div>
+                      </div>
+                      <div className="analysis-kpi-card">
+                        <div className="analysis-kpi-title">Top Group Sales</div>
+                        <div className="analysis-kpi-value">$ {formatNumber(topSalesAmount)}</div>
+                      </div>
+                      <div className="analysis-kpi-card">
+                        <div className="analysis-kpi-title">Top Selling Dish</div>
+                        <div className="analysis-kpi-value">{topSellingDish} ({formatNumber(topDishQty, true)})</div>
+                      </div>
+                      <div className="analysis-kpi-card">
+                        <div className="analysis-kpi-title">Avg Sales / Group</div>
+                        <div className="analysis-kpi-value">$ {formatNumber(avgSalesPerGroup)}</div>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* ✅ New KPI Cards for Transaction (Cash In & Cash Out) Dashboard */}
+                {dayEnd === "Transaction" && (() => {
+                  const dataRows = localData.filter(r => !r.isTotalRow);
+                  const totalCashIn = dataRows.reduce((sum, r) => sum + (parseFloat(r.CashIn || 0) || 0), 0);
+                  const totalCashOut = dataRows.reduce((sum, r) => sum + (parseFloat(r.CashOut || 0) || 0), 0);
+                  const netCash = totalCashIn - totalCashOut;
+                  const totalTransactions = dataRows.length;
+                  const cashInCount = dataRows.filter(r => (parseFloat(r.CashIn || 0) || 0) > 0).length;
+                  const cashOutCount = dataRows.filter(r => (parseFloat(r.CashOut || 0) || 0) > 0).length;
+
+                  return (
+                    <div className="analysis-kpi-container" style={{ marginBottom: '25px' }}>
+                      <div className="analysis-kpi-card">
+                        <div className="analysis-kpi-title">Total Cash In</div>
+                        <div className="analysis-kpi-value" style={{ color: '#2e7d32' }}>$ {formatNumber(totalCashIn)}</div>
+                      </div>
+                      <div className="analysis-kpi-card">
+                        <div className="analysis-kpi-title">Total Cash Out</div>
+                        <div className="analysis-kpi-value" style={{ color: '#c62828' }}>$ {formatNumber(totalCashOut)}</div>
+                      </div>
+                      <div className="analysis-kpi-card">
+                        <div className="analysis-kpi-title">Net Cash Balance</div>
+                        <div className="analysis-kpi-value">$ {formatNumber(netCash)}</div>
+                      </div>
+                      <div className="analysis-kpi-card">
+                        <div className="analysis-kpi-title">Total Transactions</div>
+                        <div className="analysis-kpi-value">{formatNumber(totalTransactions, true)}</div>
+                      </div>
+                      <div className="analysis-kpi-card">
+                        <div className="analysis-kpi-title">Cash In Count</div>
+                        <div className="analysis-kpi-value">{formatNumber(cashInCount, true)}</div>
+                      </div>
+                      <div className="analysis-kpi-card">
+                        <div className="analysis-kpi-title">Cash Out Count</div>
+                        <div className="analysis-kpi-value">{formatNumber(cashOutCount, true)}</div>
                       </div>
                     </div>
                   );
@@ -2101,8 +2937,8 @@ const CafeSalesReport = ({
                 {/* ✅ New KPI Cards for Top N Items Dashboard */}
                 {dayEnd === "TopNItems" && (() => {
                   const dataRows = localData.filter(r => !r.isTotalRow);
-                  const totalSales = summaryData ? summaryData.totalSales : dataRows.reduce((sum, r) => sum + (parseFloat(r.SalesAmount || 0) || 0), 0);
-                  const totalQty = summaryData ? summaryData.totalQty : dataRows.reduce((sum, r) => sum + (parseFloat(r.QtySold || 0) || 0), 0);
+                  const totalSales = dataRows.reduce((sum, r) => sum + (parseFloat(r.SalesAmount || 0) || 0), 0);
+                  const totalQty = dataRows.reduce((sum, r) => sum + (parseFloat(r.QtySold || 0) || 0), 0);
 
                   // Find Top Selling (by Qty)
                   const sortedByQty = [...dataRows].sort((a, b) => (parseFloat(b.QtySold) || 0) - (parseFloat(a.QtySold) || 0));
@@ -2184,6 +3020,42 @@ const CafeSalesReport = ({
                   );
                 })()}
 
+                {/* ✅ New KPI Cards for Discount Sales Detail Dashboard */}
+                {dayEnd === "DiscountDetail" && (() => {
+                  const detailRows = localData.filter(r => !r.isDateHeader && !r.isOrderHeader && !r.isTotalRow && !r.isGrandTotal);
+                  const totalSalesValue = detailRows.reduce((sum, r) => sum + (parseFloat(r.Total || 0) || 0), 0);
+                  const totalQty = detailRows.reduce((sum, r) => sum + (parseFloat(r.Quantity || 0) || 0), 0);
+                  const orderHeaders = localData.filter(r => r.isOrderHeader);
+                  const totalDiscount = orderHeaders.reduce((sum, r) => sum + (parseFloat(r.Total || 0) || 0), 0);
+                  const discountedOrders = orderHeaders.length;
+                  const discountPct = (totalSalesValue + totalDiscount) > 0 ? (totalDiscount / (totalSalesValue + totalDiscount)) * 100 : 0;
+
+                  return (
+                    <div className="analysis-kpi-container" style={{ marginBottom: '25px' }}>
+                      <div className="analysis-kpi-card">
+                        <div className="analysis-kpi-title">Total Sales Revenue</div>
+                        <div className="analysis-kpi-value">$ {formatNumber(totalSalesValue)}</div>
+                      </div>
+                      <div className="analysis-kpi-card">
+                        <div className="analysis-kpi-title">Total Discount Given</div>
+                        <div className="analysis-kpi-value">$ {formatNumber(totalDiscount)}</div>
+                      </div>
+                      <div className="analysis-kpi-card">
+                        <div className="analysis-kpi-title">Discounted Orders</div>
+                        <div className="analysis-kpi-value">{formatNumber(discountedOrders, true)}</div>
+                      </div>
+                      <div className="analysis-kpi-card">
+                        <div className="analysis-kpi-title">Total Items Sold</div>
+                        <div className="analysis-kpi-value">{formatNumber(totalQty, true)}</div>
+                      </div>
+                      <div className="analysis-kpi-card">
+                        <div className="analysis-kpi-title">Effective Discount %</div>
+                        <div className="analysis-kpi-value">{discountPct.toFixed(2)}%</div>
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 {/* ✅ New KPI Cards for Guest Meal Summary Dashboard */}
                 {dayEnd === "GuestMeal" && (() => {
                   const dataRows = localData.filter(r => !r.isTotalRow);
@@ -2223,7 +3095,7 @@ const CafeSalesReport = ({
                 {dayEnd === "GST" && (() => {
                   const dataRows = localData.filter(r => !r.isTotalRow);
                   const totalSales = summaryData ? summaryData.totalSales : dataRows.reduce((sum, r) => sum + (parseFloat(r.TotalAmount || r['Total Sales'] || 0) || 0), 0);
-                  const totalTax = dataRows.reduce((sum, r) => sum + (parseFloat(r.TotalTax || r['Total Tax'] || 0) || 0), 0);
+                  const totalTax = dataRows.reduce((sum, r) => sum + (parseFloat(r['GST 9%'] || r.TotalTax || r['Total Tax'] || r.GST || 0) || 0), 0);
                   const totalBills = summaryData ? summaryData.totalOrders : dataRows.reduce((sum, r) => sum + (parseInt(r.Bills || r['Total Bills'] || r.TotalBills || 0) || 0), 0);
                   const taxableSales = dataRows.reduce((sum, r) => sum + (parseFloat(r.TaxableAmount || 0) || 0), 0);
 
@@ -2393,7 +3265,7 @@ const CafeSalesReport = ({
                 })()}
 
                 {/* ✅ New KPI Cards for Hourly Sales Dashboard */}
-                {orderSales === "Hourly" && (() => {
+                {(dayEnd === "Hourly" || orderSales === "Hourly") && (() => {
                   const dataRows = localData.filter(r => !r.isTotalRow);
                   const totalSales = summaryData ? summaryData.totalSales : dataRows.reduce((sum, r) => sum + (parseFloat(r.Amount) || 0), 0);
                   const totalQty = summaryData ? summaryData.totalQty : dataRows.reduce((sum, r) => sum + (parseInt(r.Qty) || 0), 0);
@@ -2645,7 +3517,7 @@ const CafeSalesReport = ({
                   );
                 })()}
 
-                {/* ✅ New KPI Cards for Sales Analysis Dashboard */}
+                {/* ✅ New KPI Cards for Sales Performance (Analysis) Dashboard - Matching Image 1 */}
                 {bySales === "Analysis" && (() => {
                   const dataRows = localData.filter(r => !r.isTotalRow);
                   const totalNetSales = dataRows.reduce((sum, r) => sum + (parseFloat(r['Net Total'] || r.NetTotal || r.TOTAL || 0) || 0), 0);
@@ -2655,25 +3527,25 @@ const CafeSalesReport = ({
                   const avgPax = totalPax > 0 ? totalNetSales / totalPax : 0;
 
                   return (
-                    <div className="analysis-kpi-container">
+                    <div className="analysis-kpi-container" style={{ marginBottom: '25px' }}>
                       <div className="analysis-kpi-card">
-                        <div className="analysis-kpi-title">Total Net Sales</div>
+                        <div className="analysis-kpi-title">TOTAL NET SALES</div>
                         <div className="analysis-kpi-value">$ {formatNumber(totalNetSales)}</div>
                       </div>
                       <div className="analysis-kpi-card">
-                        <div className="analysis-kpi-title">Total Bills</div>
+                        <div className="analysis-kpi-title">TOTAL BILLS</div>
                         <div className="analysis-kpi-value">{formatNumber(totalBills, true)}</div>
                       </div>
                       <div className="analysis-kpi-card">
-                        <div className="analysis-kpi-title">Avg. Order Value (AOV)</div>
+                        <div className="analysis-kpi-title">AVG. ORDER VALUE (AOV)</div>
                         <div className="analysis-kpi-value">$ {formatNumber(aov)}</div>
                       </div>
                       <div className="analysis-kpi-card">
-                        <div className="analysis-kpi-title">Total Covers (PAX)</div>
-                        <div className="analysis-kpi-value">{formatNumber(totalPax, true)}</div>
+                        <div className="analysis-kpi-title">TOTAL COVERS (PAX)</div>
+                        <div className="analysis-kpi-value">{totalPax > 0 ? formatNumber(totalPax, true) : '0'}</div>
                       </div>
                       <div className="analysis-kpi-card">
-                        <div className="analysis-kpi-title">Avg. Spend Per Guest</div>
+                        <div className="analysis-kpi-title">AVG. SPEND PER GUEST</div>
                         <div className="analysis-kpi-value">$ {formatNumber(avgPax)}</div>
                       </div>
                     </div>
@@ -2839,7 +3711,7 @@ const CafeSalesReport = ({
                   const dataRows = localData.filter(r => !r.isTotalRow);
                   const totalNetSales = summaryData ? summaryData.totalSales : dataRows.reduce((sum, r) => sum + (parseFloat(r.NetSales || r.netSales) || 0), 0);
                   const totalQtySold = summaryData ? summaryData.totalQty : dataRows.reduce((sum, r) => sum + (parseFloat(r.Sold || r.sold || r.QtySold || r.qtySold) || 0), 0);
-                  const totalDiscount = (fromDate === '2026-08-18' && toDate === '2026-08-18') ? 58.50 : dataRows.reduce((sum, r) => sum + (parseFloat(r.ItemDisc || r.itemDisc || 0) || 0) + (parseFloat(r.BillDisc || r.billDisc || 0) || 0), 0);
+                  const totalDiscount =  dataRows.reduce((sum, r) => sum + (parseFloat(r.ItemDisc || r.itemDisc || 0) || 0) + (parseFloat(r.BillDisc || r.billDisc || 0) || 0), 0);
 
                   let topCategoryName = "-";
                   let maxNetSales = 0;
@@ -2883,7 +3755,7 @@ const CafeSalesReport = ({
                   const dataRows = localData.filter(r => !r.isTotalRow && !r.isCategoryHeader && !r.isSpacer);
                   const totalNetSales = summaryData ? summaryData.totalSales : dataRows.reduce((sum, r) => sum + (parseFloat(r.NetSales || r.netSales) || 0), 0);
                   const totalQtySold = summaryData ? summaryData.totalQty : dataRows.reduce((sum, r) => sum + (parseFloat(r.Sold || r.sold || r.QtySold || r.qtySold) || 0), 0);
-                  const totalDiscount = (fromDate === '2026-08-18' && toDate === '2026-08-18') ? 58.50 : dataRows.reduce((sum, r) => sum + (parseFloat(r.ItemDisc || r.itemDisc || 0) || 0) + (parseFloat(r.BillDisc || r.billDisc || 0) || 0), 0);
+                  const totalDiscount =  dataRows.reduce((sum, r) => sum + (parseFloat(r.ItemDisc || r.itemDisc || 0) || 0) + (parseFloat(r.BillDisc || r.billDisc || 0) || 0), 0);
 
                   let topGroupName = "-";
                   let maxNetSales = 0;
@@ -2983,61 +3855,365 @@ const CafeSalesReport = ({
 
                 {/* Download Button positioned AFTER the KPI Cards */}
                 <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '15px' }}>
-                  <button onClick={handleDownload} className="download-btn-inside" title="Download PDF">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                      <polyline points="7 10 12 15 17 10"></polyline>
-                      <line x1="12" y1="15" x2="12" y2="3"></line>
-                    </svg>
-                  </button>
+                  <div className="download-dropdown-wrapper" ref={downloadDropdownRef}>
+                    <button
+                      onClick={() => setDownloadDropdownOpen(prev => !prev)}
+                      className="download-btn-inside"
+                      title="Download Options"
+                    >
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                      </svg>
+                    </button>
+                    {downloadDropdownOpen && (
+                      <div className="download-dropdown-menu">
+                        <button
+                          type="button"
+                          className="download-dropdown-item"
+                          onClick={() => {
+                            setDownloadDropdownOpen(false);
+                            handlePrint();
+                          }}
+                        >
+                          <span className="download-dropdown-icon print">
+                            {/* Print Printer Icon */}
+                            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                              <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                              <rect x="6" y="14" width="12" height="8"></rect>
+                            </svg>
+                          </span>
+                          Print
+                        </button>
+                        <button
+                          type="button"
+                          className="download-dropdown-item"
+                          onClick={() => {
+                            setDownloadDropdownOpen(false);
+                            handleDownload();
+                          }}
+                        >
+                          <span className="download-dropdown-icon pdf">
+                            {/* PDF Document Icon */}
+                            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                              <polyline points="14 2 14 8 20 8"></polyline>
+                              <line x1="16" y1="13" x2="8" y2="13"></line>
+                              <line x1="16" y1="17" x2="8" y2="17"></line>
+                              <polyline points="10 9 9 9 8 9"></polyline>
+                            </svg>
+                          </span>
+                          PDF
+                        </button>
+                        <button
+                          type="button"
+                          className="download-dropdown-item"
+                          onClick={() => {
+                            setDownloadDropdownOpen(false);
+                            try {
+                              const exportRows = [];
+                              const currentReportKey = appliedFilters.orderSales || appliedFilters.dayEnd || appliedFilters.bySales || appliedFilters.byItem || orderSales || dayEnd || bySales || byItem;
+                              const headers = displayColumns.map(col => getCompactHeaderLabel(col, currentReportKey));
+                              exportRows.push(headers);
+
+                              displayData.forEach(item => {
+                                if (item.isCategoryHeader) {
+                                  const catRow = new Array(displayColumns.length).fill('');
+                                  catRow[0] = item.DishGroupname || item.Dishname || '';
+                                  exportRows.push(catRow);
+                                  return;
+                                }
+                                if (item.isDishGroupHeader) {
+                                  const groupRow = new Array(displayColumns.length).fill('');
+                                  groupRow[0] = item.Dishname || '';
+                                  exportRows.push(groupRow);
+                                  return;
+                                }
+                                if (item.isSpacer) {
+                                  return;
+                                }
+
+                                const rowVals = displayColumns.map(col => {
+                                  let value = item[col];
+                                  if (col === 'Date' && value) {
+                                    const dateObj = new Date(value);
+                                    if (!isNaN(dateObj.getTime()) && typeof value === 'object') {
+                                      value = dateObj.toLocaleDateString('en-GB');
+                                    }
+                                  }
+                                  const isTextCol = getIsTextCol(col);
+                                  const isCountCol = getIsCountCol(col);
+                                  if (!isTextCol && (typeof value === 'number' || (value !== '' && value !== null && !isNaN(Number(value))))) {
+                                    const num = parseFloat(value);
+                                    return isNaN(num) ? value : (isCountCol ? Math.round(num) : Number(num.toFixed(2)));
+                                  }
+                                  return value !== null && value !== undefined ? value : '';
+                                });
+                                exportRows.push(rowVals);
+                              });
+
+                              // Grand Total row
+                              const hasTotalRow = displayData.some(r => r.isTotalRow || r.isGrandTotal || r.Date === 'Grand Total:' || r.Date === 'TOTAL' || r.CancelDate === 'Grand Total:' || r.DishName === 'Grand Total' || r.DishGroupName === 'Grand Total:' || r.CategoryName === 'Grand Total:');
+                              if (!hasTotalRow && bySales !== "Analysis" && dayEnd !== "Cancellation" && dayEnd !== "CancellationDetail" && dayEnd !== "DiscountDetail") {
+                                const totalRow = displayColumns.map((col, idx) => {
+                                  if (idx === 0) return 'Grand Total:';
+                                  const isTextCol = getIsTextCol(col);
+                                  if (isTextCol) return '';
+                                  const isCountCol = getIsCountCol(col);
+                                  const lowerCol = col.toLowerCase().replace(/[\s_-]/g, '');
+                                  let totalVal = 0;
+                                  if (dayEnd === 'TopNItems' || dayEnd === 'Hourly' || orderSales === 'Hourly') {
+                                    totalVal = displayData.reduce((sum, row) => sum + (row.isTotalRow ? 0 : (parseFloat(row[col]) || 0)), 0);
+                                  } else if (summaryData) {
+                                    if (lowerCol === 'amount' || lowerCol === 'netsales' || lowerCol === 'salesamount' || lowerCol === 'lineamount' || lowerCol === 'subtotal' || lowerCol === 'nettotal' || lowerCol === 'itemsales') {
+                                      totalVal = summaryData.totalSales;
+                                    } else if (lowerCol === 'qty' || lowerCol === 'qtysold' || lowerCol === 'sold' || lowerCol === 'quantity') {
+                                      totalVal = summaryData.totalQty;
+                                    } else if (lowerCol === 'billcount' || lowerCol === 'bills' || lowerCol === 'noofbills' || lowerCol === 'noofbill') {
+                                      totalVal = summaryData.totalOrders;
+                                    } else {
+                                      totalVal = displayData.reduce((sum, row) => sum + (row.isTotalRow ? 0 : (parseFloat(row[col]) || 0)), 0);
+                                    }
+                                  } else {
+                                    totalVal = displayData.reduce((sum, row) => sum + (row.isTotalRow ? 0 : (parseFloat(row[col]) || 0)), 0);
+                                  }
+                                  return isCountCol ? Math.round(totalVal) : Number(totalVal.toFixed(2));
+                                });
+                                exportRows.push(totalRow);
+                              }
+
+                              if ((bySales === "Summary" || bySales === "Analysis") && paymodeData) {
+                                exportRows.push([]);
+                                exportRows.push(["CASH", "NETS", "PAYNOW", "UPI", "MEMBER", "CREDIT", "ONLINE", "YPAYNOW", "YCARD"]);
+                                const pmRow = [
+                                  parseFloat(paymodeData.Cash) || 0,
+                                  parseFloat(paymodeData.Nets) || 0,
+                                  parseFloat(paymodeData.PayNow || paymodeData.Paynow) || 0,
+                                  parseFloat(paymodeData.UPI) || 0,
+                                  parseFloat(paymodeData.Member) || 0,
+                                  parseFloat(paymodeData.Credit) || 0,
+                                  parseFloat(paymodeData.Online) || 0,
+                                  parseFloat(paymodeData.YeahPay_PayNow || paymodeData.Yeahpay_Paynow) || 0,
+                                  parseFloat(paymodeData.YeahPay_Card || paymodeData.Yeahpay_Card) || 0
+                                ];
+                                exportRows.push(pmRow);
+                                exportRows.push(pmRow);
+                              }
+
+                              const worksheet = XLSX.utils.aoa_to_sheet(exportRows);
+                              const workbook = XLSX.utils.book_new();
+                              XLSX.utils.book_append_sheet(workbook, worksheet, "SalesReport");
+
+                              // If Show Chart is enabled, append a dedicated Chart Breakdown sheet for native spreadsheet chart visualization
+                              if (activeShowChart) {
+                                const expFrom = appliedFilters.fromDate || fromDate;
+                                const expTo = appliedFilters.toDate || toDate;
+                                const expDayEnd = appliedFilters.dayEnd || dayEnd;
+                                const expReport = appliedFilters.orderSales || appliedFilters.dayEnd || appliedFilters.bySales || appliedFilters.byItem || orderSales || dayEnd || bySales || byItem || "Sales Report";
+                                const isPaymodeExport = expDayEnd === "Paymode";
+                                const isTransactionExport = expDayEnd === "Transaction";
+
+                                let chartRows = [];
+                                if (isTransactionExport) {
+                                  const cleanData = displayData.filter(r => !r.isTotalRow && !r.isGrandTotal && !r.isCategoryHeader && !r.isDishGroupHeader && !r.isSpacer);
+                                  const totalCashIn = cleanData.reduce((sum, r) => sum + (parseFloat(r.CashIn) || 0), 0);
+                                  const totalCashOut = cleanData.reduce((sum, r) => sum + (parseFloat(r.CashOut) || 0), 0);
+                                  const totalTransVal = totalCashIn + totalCashOut;
+                                  chartRows = [
+                                    ["Transaction Cash Overview (Donut Chart)"],
+                                    [`Report: Transaction Report`],
+                                    [`Period: ${expFrom} to ${expTo}`],
+                                    [`Chart Type: DONUT`],
+                                    [`Total Amount: $ ${totalTransVal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`],
+                                    [],
+                                    ["Flow", "Amount", "Share (%)"]
+                                  ];
+                                  if (totalCashIn > 0) {
+                                    const pct = totalTransVal > 0 ? Number(((totalCashIn / totalTransVal) * 100).toFixed(1)) : 0;
+                                    chartRows.push(["Cash In", totalCashIn, `${pct}%`]);
+                                  }
+                                  if (totalCashOut > 0) {
+                                    const pct = totalTransVal > 0 ? Number(((totalCashOut / totalTransVal) * 100).toFixed(1)) : 0;
+                                    chartRows.push(["Cash Out", totalCashOut, `${pct}%`]);
+                                  }
+                                } else if (isPaymodeExport) {
+                                  const modes = [
+                                    { label: "Cash", key: ["Cash"] },
+                                    { label: "NETS", key: ["Nets", "NETS"] },
+                                    { label: "PayNow", key: ["PayNow", "Paynow"] },
+                                    { label: "UPI", key: ["UPI", "Upi"] },
+                                    { label: "Member", key: ["Member"] },
+                                    { label: "Credit Card", key: ["Credit"] },
+                                    { label: "Online", key: ["Online"] },
+                                    { label: "YeahPay PayNow", key: ["YeahPay_PayNow", "Yeahpay_Paynow"] },
+                                    { label: "YeahPay Card", key: ["YeahPay_Card", "Yeahpay_Card"] }
+                                  ];
+                                  const cleanData = displayData.filter(r => !r.isTotalRow && !r.isGrandTotal && !r.isCategoryHeader && !r.isDishGroupHeader && !r.isSpacer);
+                                  const paymodeItems = modes.map(m => {
+                                    const val = cleanData.reduce((sum, r) => {
+                                      let v = 0;
+                                      for (const k of m.key) {
+                                        if (r[k] !== undefined && r[k] !== null) {
+                                          v = parseFloat(r[k]) || 0;
+                                          break;
+                                        }
+                                      }
+                                      return sum + v;
+                                    }, 0);
+                                    return {
+                                      label: m.label,
+                                      value: Number(val.toFixed(2))
+                                    };
+                                  }).filter(item => item.value > 0);
+
+                                  const totalPaymodeVal = paymodeItems.reduce((sum, item) => sum + item.value, 0);
+
+                                  chartRows = [
+                                    ["Payment Collection Breakdown (Donut Chart)"],
+                                    [`Report: Payment Collection Breakdown`],
+                                    [`Period: ${expFrom} to ${expTo}`],
+                                    [`Chart Type: DONUT`],
+                                    [`Total Amount: $ ${totalPaymodeVal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`],
+                                    [],
+                                    ["Payment Method", "Amount", "Share (%)"]
+                                  ];
+
+                                  paymodeItems.forEach(item => {
+                                    const pct = totalPaymodeVal > 0 ? Number(((item.value / totalPaymodeVal) * 100).toFixed(1)) : 0;
+                                    chartRows.push([item.label, item.value, `${pct}%`]);
+                                  });
+                                } else {
+                                  chartRows = [
+                                    ["Sales Performance Chart Summary (Navy Theme)"],
+                                    [`Report: ${expReport}`],
+                                    [`Period: ${expFrom} to ${expTo}`],
+                                    [`Chart Type: ${selectedChartType ? selectedChartType.toUpperCase() : 'DEFAULT'}`],
+                                    [],
+                                    ["Metric / Label", "Value"]
+                                  ];
+                                  const cleanData = displayData.filter(r => !r.isTotalRow && !r.isGrandTotal && !r.isCategoryHeader && !r.isDishGroupHeader && !r.isSpacer);
+                                  cleanData.forEach(r => {
+                                    const label = r.Item || r.DishName || r.Dishname || r.Hour || r.Date || r.CategoryName || r.Group || r.Paymode || r.PaymentMode || r.BillDate || 'Item';
+                                    const val = parseFloat(r.Amount || r.SalesAmount || r.TotalAmount || r.NetSales || r.NetTotal || r.Qty || 0) || 0;
+                                    chartRows.push([label, val]);
+                                  });
+                                }
+
+                                const chartSheet = XLSX.utils.aoa_to_sheet(chartRows);
+                                XLSX.utils.book_append_sheet(workbook, chartSheet, "ChartData");
+                              }
+
+                              const expReportTitle = (appliedFilters.orderSales || appliedFilters.dayEnd || appliedFilters.bySales || appliedFilters.byItem || orderSales || dayEnd || bySales || byItem || "sales_report").toLowerCase().replace(/\s+/g, '_');
+                              const expFromDate = appliedFilters.fromDate || fromDate;
+                              const expToDate = appliedFilters.toDate || toDate;
+                              const fileName = `${expReportTitle}_${expFromDate}_to_${expToDate}.xlsx`;
+                              XLSX.writeFile(workbook, fileName);
+                            } catch (excelErr) {
+                              console.error("Excel generation error:", excelErr);
+                              alert("Error generating Excel file: " + excelErr.message);
+                            }
+                          }}
+                        >
+                          <span className="download-dropdown-icon excel">
+                            {/* Excel Spreadsheet Icon */}
+                            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                              <line x1="9" y1="9" x2="15" y2="15"></line>
+                              <line x1="15" y1="9" x2="9" y2="15"></line>
+                            </svg>
+                          </span>
+                          Excel
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div style={{ overflowX: 'auto', width: '100%' }}>
-                  <table className="report-table professional-table">
+                  <table className={`report-table professional-table ${orderSales === "GroupDetail" ? "group-detail" : ""}`}>
                     <thead>
                       <tr>
                         {displayColumns.map((col, idx) => {
-                          const isSortable = dayEnd === "TopNItems" && ['DishName', 'QtySold', 'SalesAmount', 'SalesPct'].includes(col);
+                          const isCurrentSorted = sortColumn === col;
 
                           const handleHeaderClick = () => {
-                            if (!isSortable) return;
-                            if (col === 'DishName') {
-                              setTopNSort(prev => prev === 'DishNameAsc' ? 'DishNameDesc' : 'DishNameAsc');
-                            } else if (col === 'QtySold') {
-                              setTopNSort(prev => prev === 'QtySoldDesc' ? 'QtySoldAsc' : 'QtySoldDesc');
-                            } else if (col === 'SalesAmount' || col === 'SalesPct') {
-                              setTopNSort(prev => prev === 'SalesAmountDesc' ? 'SalesAmountAsc' : 'SalesAmountDesc');
+                            if (isCurrentSorted) {
+                              setSortDirection(prev => (prev === 'asc' ? 'desc' : 'asc'));
+                            } else {
+                              setSortColumn(col);
+                              setSortDirection('asc');
                             }
                           };
 
                           let sortIndicator = null;
-                          if (isSortable) {
-                            if (col === 'DishName') {
-                              if (topNSort === 'DishNameAsc') sortIndicator = ' ▲';
-                              if (topNSort === 'DishNameDesc') sortIndicator = ' ▼';
-                            } else if (col === 'QtySold') {
-                              if (topNSort === 'QtySoldAsc') sortIndicator = ' ▲';
-                              if (topNSort === 'QtySoldDesc') sortIndicator = ' ▼';
-                            } else if (col === 'SalesAmount' || col === 'SalesPct') {
-                              if (topNSort === 'SalesAmountAsc') sortIndicator = ' ▲';
-                              if (topNSort === 'SalesAmountDesc') sortIndicator = ' ▼';
-                            }
+                          if (isCurrentSorted) {
+                            sortIndicator = sortDirection === 'asc' ? ' ▲' : ' ▼';
+                          }
+
+                          let colWidth = 'auto';
+                          if (orderSales === "Itemwise") {
+                            if (col === 'Item') colWidth = '50%';
+                            else if (col === 'Qty') colWidth = '25%';
+                            else if (col === 'Amount') colWidth = '25%';
+                          } else if (dayEnd === "Hourly" || orderSales === "Hourly") {
+                            if (col === 'Date') colWidth = '25%';
+                            else if (col === 'Hour') colWidth = '35%';
+                            else if (col === 'Qty') colWidth = '20%';
+                            else if (col === 'Amount') colWidth = '20%';
+                          } else if (orderSales === "GroupDetail") {
+                            if (col === 'Date') colWidth = '20%';
+                            else if (col === 'DishName') colWidth = '45%';
+                            else if (col === 'Qty') colWidth = '15%';
+                            else if (col === 'Amount') colWidth = '20%';
+                          } else if (dayEnd === "DiscountDetail") {
+                            if (col === 'DishName') colWidth = '40%';
+                            else colWidth = '10%';
+                          } else if (bySales === "Analysis") {
+                            if (col === 'Date') colWidth = '10%';
+                            else if (col === 'CategoryName' || col === 'Category') colWidth = '14%';
+                            else if (col === 'No of Bills' || col === 'Bills' || col === 'BillCount') colWidth = '8%';
+                            else if (col === 'Pax') colWidth = '6%';
+                            else if (col === 'Sub Total' || col === 'SubTotal') colWidth = '9%';
+                            else if (col === 'Discount' || col === 'Disc') colWidth = '8%';
+                            else if (col === 'SVC') colWidth = '7%';
+                            else if (col === 'GST') colWidth = '9%';
+                            else if (col === 'Net Total' || col === 'NetTotal') colWidth = '10%';
+                            else if (col === 'Avg/Bill' || col === 'AvgBill') colWidth = '10%';
+                            else if (col === 'Avg/Pax' || col === 'AvgPax') colWidth = '9%';
+                          } else if (byItem === "Month") {
+                            if (col === 'Date') colWidth = '30%';
+                            else if (col === 'DishGroup') colWidth = '45%';
+                            else if (col === 'DishPrice') colWidth = '25%';
+                          } else if (byItem === "QtyDetail") {
+                            if (col === 'Date') colWidth = '25%';
+                            else if (col === 'DishGroup') colWidth = '35%';
+                            else if (col === 'DishName') colWidth = '40%';
+                          } else if (byItem === "Qty") {
+                            if (col === 'DishGroupName') colWidth = '65%';
+                            else if (col === 'QtySold') colWidth = '35%';
+                          } else if (byItem === "QtyGroup") {
+                            if (col === 'DishName') colWidth = '65%';
+                            else if (col === 'QtySold') colWidth = '35%';
                           }
 
                           return (
                             <th
                               key={idx}
                               onClick={handleHeaderClick}
+                              className={orderSales === "GroupDetail" ? "group-detail-th" : ""}
                               style={{
                                 textAlign: 'center',
-                                padding: '10px 12px',
+                                padding: '12px 14px',
                                 whiteSpace: 'nowrap',
                                 fontSize: '13px',
-                                cursor: isSortable ? 'pointer' : 'default',
-                                userSelect: isSortable ? 'none' : 'auto',
+                                cursor: 'pointer',
+                                userSelect: 'none',
+                                width: colWidth,
                                 minWidth: (col === 'BillNumber' || col === 'BillNo' || col === 'InvoiceNo') ? '140px' : 'auto'
                               }}
                             >
-                              {getCompactHeaderLabel(col)}
+                              {getCompactHeaderLabel(col, appliedFilters.orderSales || appliedFilters.dayEnd || appliedFilters.bySales || appliedFilters.byItem || orderSales || dayEnd || bySales || byItem)}
                               {sortIndicator}
                             </th>
                           );
@@ -3050,7 +4226,28 @@ const CafeSalesReport = ({
                             return (
                               <tr key={i} className="category-header-row">
                                 <td colSpan={displayColumns.length}>
-                                  {item.DishGroupname || item.Dishname || ''}
+                                  {item.DishGroupname || item.DishName || item.Dishname || ''}
+                                </td>
+                              </tr>
+                            );
+                          }
+                          if (item.isDateHeader) {
+                            return (
+                              <tr key={i} className="discount-detail-date-row">
+                                <td colSpan={displayColumns.length}>
+                                  {item.DishName || ''}
+                                </td>
+                              </tr>
+                            );
+                          }
+                          if (item.isOrderHeader) {
+                            return (
+                              <tr key={i} className="discount-detail-order-row">
+                                <td colSpan={displayColumns.length - 1} style={{ textAlign: 'left', fontWeight: 'bold' }}>
+                                  {item.DishName || ''}
+                                </td>
+                                <td style={{ textAlign: 'center', fontWeight: 'bold' }}>
+                                  {item.Total || ''}
                                 </td>
                               </tr>
                             );
@@ -3072,9 +4269,13 @@ const CafeSalesReport = ({
                             );
                           }
 
-                          const isTotal = item.isTotalRow || item.Date === 'Grand Total:' || item.Date === 'TOTAL';
+                          const isGrandTotal = item.isGrandTotal || item.Date === 'Grand Total:' || item.Date === 'TOTAL' || item.DishName === 'Grand Total' || item.DishGroupName === 'Grand Total:';
+                          const isSubTotal = (item.isTotalRow || item.isDateTotal || item.isOrderTotal || item.isDayTotal || item.DishName === 'Total:' || item.DishName === 'Order Total' || item.DishName === 'Day Total') && !isGrandTotal;
+                          const isTotal = isGrandTotal || isSubTotal;
+                          const rowClass = isGrandTotal ? "grand-total-row" : (isSubTotal ? "day-total-row" : "");
+
                           return (
-                            <tr key={i} className={isTotal ? "day-total-row" : ""}>
+                            <tr key={i} className={rowClass}>
                               {displayColumns.map((col, idx) => {
                                 let value = item[col];
                                 // Format Date fields
@@ -3097,19 +4298,41 @@ const CafeSalesReport = ({
                                   colMinWidth = '95px';
                                 }
 
+                                let cellAlign = 'center';
+                                if (orderSales === "GroupDetail") {
+                                  if (col === 'Date') {
+                                    cellAlign = isGrandTotal ? 'center' : 'center';
+                                  } else if (col === 'DishName') {
+                                    cellAlign = isSubTotal ? 'center' : 'center';
+                                  } else if (col === 'Qty') {
+                                    cellAlign = 'center';
+                                  } else if (col === 'Amount') {
+                                    cellAlign = 'center';
+                                  }
+                                } else if (dayEnd === "DiscountDetail") {
+                                  if (col === 'DishName') {
+                                    cellAlign = isTotal ? 'center' : 'left';
+                                  } else {
+                                    cellAlign = 'center';
+                                  }
+                                }
+
+                                const isDiscountDetailCol = dayEnd === "DiscountDetail";
+                                const shouldFormatAsCount = isDiscountDetailCol && col === 'Quantity' ? false : isCountCol;
+
                                 return (
                                   <td key={idx} style={{
-                                    textAlign: 'center',
-                                    padding: '6px 4px',
+                                    textAlign: cellAlign,
+                                    padding: (orderSales === "GroupDetail" || dayEnd === "DiscountDetail") ? '10px 14px' : '6px 4px',
                                     whiteSpace: 'nowrap',
                                     wordBreak: 'normal',
                                     wordWrap: 'normal',
                                     fontWeight: isTotal ? 'bold' : 'normal',
-                                    fontSize: '12px',
+                                    fontSize: '13px',
                                     minWidth: colMinWidth
                                   }}>
                                     {isNumeric
-                                      ? formatNumber(value, isCountCol)
+                                      ? formatNumber(value, shouldFormatAsCount)
                                       : (value !== null && value !== undefined && value !== '' ? value : '')}
                                   </td>
                                 );
@@ -3119,8 +4342,8 @@ const CafeSalesReport = ({
                         })}
                       {/* Render manual Grand Total row ONLY if data does not already include a total row */}
                       {(() => {
-                        const hasTotalRow = displayData.some(r => r.isTotalRow || r.isGrandTotal || r.Date === 'Grand Total:' || r.Date === 'TOTAL' || r.CancelDate === 'Grand Total:');
-                        if (hasTotalRow || bySales === "Analysis" || dayEnd === "Cancellation" || dayEnd === "CancellationDetail") return null;
+                        const hasTotalRow = displayData.some(r => r.isTotalRow || r.isGrandTotal || r.Date === 'Grand Total:' || r.Date === 'TOTAL' || r.CancelDate === 'Grand Total:' || r.DishName === 'Grand Total' || r.DishGroupName === 'Grand Total:');
+                        if (hasTotalRow || bySales === "Analysis" || dayEnd === "Cancellation" || dayEnd === "CancellationDetail" || dayEnd === "DiscountDetail") return null;
                         return (
                           <tr className="grand-total-row">
                             {displayColumns.map((col, idx) => {
@@ -3129,7 +4352,9 @@ const CafeSalesReport = ({
                               if (isTextCol) return <td key={idx} style={{ textAlign: 'center' }}></td>;
                               let total;
                               const lowerCol = col.toLowerCase().replace(/[\s_-]/g, '');
-                              if (summaryData) {
+                              if (dayEnd === 'TopNItems') {
+                                total = displayData.reduce((sum, row) => sum + (row.isTotalRow ? 0 : (parseFloat(row[col]) || 0)), 0);
+                              } else if (summaryData) {
                                 if (lowerCol === 'amount' || lowerCol === 'netsales' || lowerCol === 'salesamount' || lowerCol === 'lineamount' || lowerCol === 'subtotal' || lowerCol === 'nettotal' || lowerCol === 'itemsales') {
                                   total = summaryData.totalSales;
                                 } else if (lowerCol === 'qty' || lowerCol === 'qtysold' || lowerCol === 'sold' || lowerCol === 'quantity') {
@@ -3152,18 +4377,34 @@ const CafeSalesReport = ({
                   </table>
                 </div>
 
-                {/* ✅ Payment Mode Breakdown for Sales Summary Report (Screen View) */}
-                {bySales === "Summary" && (() => {
-                  const dataRows = localData.filter(r => !r.isTotalRow);
-                  const totalCash = dataRows.reduce((sum, r) => sum + (parseFloat(r.Cash) || 0), 0);
-                  const totalNets = dataRows.reduce((sum, r) => sum + (parseFloat(r.Nets) || 0), 0);
-                  const totalPaynow = dataRows.reduce((sum, r) => sum + (parseFloat(r.PayNow || r.Paynow) || 0), 0);
-                  const totalUpi = dataRows.reduce((sum, r) => sum + (parseFloat(r.UPI) || 0), 0);
-                  const totalMember = dataRows.reduce((sum, r) => sum + (parseFloat(r.Member) || 0), 0);
-                  const totalCredit = dataRows.reduce((sum, r) => sum + (parseFloat(r.Credit) || 0), 0);
-                  const totalOnline = dataRows.reduce((sum, r) => sum + (parseFloat(r.Online) || 0), 0);
-                  const totalYPaynow = dataRows.reduce((sum, r) => sum + (parseFloat(r.YeahPay_PayNow || r.Yeahpay_Paynow) || 0), 0);
-                  const totalYCard = dataRows.reduce((sum, r) => sum + (parseFloat(r.YeahPay_Card || r.Yeahpay_Card) || 0), 0);
+                {/* ✅ Payment Mode Breakdown for Sales Summary and Sales Performance Reports (Screen View) */}
+                {(bySales === "Summary" || bySales === "Analysis") && (() => {
+                  let totalCash = 0, totalNets = 0, totalPaynow = 0, totalUpi = 0, totalMember = 0, totalCredit = 0, totalOnline = 0, totalYPaynow = 0, totalYCard = 0;
+
+                  if (bySales === "Analysis") {
+                    if (paymodeData) {
+                      totalCash = parseFloat(paymodeData.Cash) || 0;
+                      totalNets = parseFloat(paymodeData.Nets) || 0;
+                      totalPaynow = parseFloat(paymodeData.PayNow || paymodeData.Paynow) || 0;
+                      totalUpi = parseFloat(paymodeData.UPI) || 0;
+                      totalMember = parseFloat(paymodeData.Member) || 0;
+                      totalCredit = parseFloat(paymodeData.Credit) || 0;
+                      totalOnline = parseFloat(paymodeData.Online) || 0;
+                      totalYPaynow = parseFloat(paymodeData.YeahPay_PayNow || paymodeData.Yeahpay_Paynow) || 0;
+                      totalYCard = parseFloat(paymodeData.YeahPay_Card || paymodeData.Yeahpay_Card) || 0;
+                    }
+                  } else {
+                    const dataRows = localData.filter(r => !r.isTotalRow);
+                    totalCash = dataRows.reduce((sum, r) => sum + (parseFloat(r.Cash) || 0), 0);
+                    totalNets = dataRows.reduce((sum, r) => sum + (parseFloat(r.Nets) || 0), 0);
+                    totalPaynow = dataRows.reduce((sum, r) => sum + (parseFloat(r.PayNow || r.Paynow) || 0), 0);
+                    totalUpi = dataRows.reduce((sum, r) => sum + (parseFloat(r.UPI) || 0), 0);
+                    totalMember = dataRows.reduce((sum, r) => sum + (parseFloat(r.Member) || 0), 0);
+                    totalCredit = dataRows.reduce((sum, r) => sum + (parseFloat(r.Credit) || 0), 0);
+                    totalOnline = dataRows.reduce((sum, r) => sum + (parseFloat(r.Online) || 0), 0);
+                    totalYPaynow = dataRows.reduce((sum, r) => sum + (parseFloat(r.YeahPay_PayNow || r.Yeahpay_Paynow) || 0), 0);
+                    totalYCard = dataRows.reduce((sum, r) => sum + (parseFloat(r.YeahPay_Card || r.Yeahpay_Card) || 0), 0);
+                  }
 
                   return (
                     <div style={{ marginTop: '25px' }}>
@@ -3217,6 +4458,16 @@ const CafeSalesReport = ({
                   <span className="powered-msg">Powered by Unipro</span>
                 </div>
               </>
+            ) : isLoading ? (
+              <div style={{ textAlign: 'center', padding: '60px 20px', fontSize: '15px', color: '#ff7f27', fontWeight: '600' }}>
+                <div style={{ display: 'inline-block', width: '28px', height: '28px', border: '3px solid #f3f3f3', borderTop: '3px solid #ff7f27', borderRadius: '50%', animation: 'spin 1s linear infinite', marginBottom: '12px' }}></div>
+                <div>Loading report data...</div>
+                <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
+              </div>
+            ) : errorMessage ? (
+              <div style={{ textAlign: 'center', padding: '40px 20px', fontSize: '14px', color: '#dc2626', fontWeight: '500' }}>
+                ⚠️ Error loading report: {errorMessage}
+              </div>
             ) : (
               <div style={{ textAlign: 'center', padding: '40px 20px', fontSize: '14px', color: '#999', fontWeight: '500' }}>
                 📋 No Data Found for the selected criteria

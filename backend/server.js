@@ -2487,10 +2487,18 @@ app.get("/dishmasterorder", async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
-/* ------------------- SERVER ------------------- */
-app.get("/", (req, res) => {
-  res.send("Backend is running 🚀");
-});
+/* ------------------- SERVER & STATIC SPA ------------------- */
+const buildPath = path.join(__dirname, "../build");
+if (fs.existsSync(buildPath)) {
+  app.use(express.static(buildPath));
+  app.get(/^(?!\/api|\/images).*$/, (req, res) => {
+    res.sendFile(path.join(buildPath, "index.html"));
+  });
+} else {
+  app.get("/", (req, res) => {
+    res.send("Backend is running 🚀");
+  });
+}
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

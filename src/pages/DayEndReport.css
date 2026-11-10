@@ -18,53 +18,25 @@
     gap: 16px;
 }
 
-/* Header Card */
-.dayend-header-card {
-    background: #ffffff;
-    border-radius: 12px;
-    padding: 18px 24px;
-    border: 1px solid #efe6da;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
+/* Page Header (Clean Style Matching Sales Report) */
+.dayend-page-header {
     display: flex;
-    align-items: center;
     justify-content: space-between;
-    background-image: radial-gradient(circle at 90% 20%, #ffeedd 0%, transparent 60%);
-}
-
-.dayend-header-left {
-    display: flex;
     align-items: center;
-    gap: 16px;
+    margin-bottom: 2px;
 }
 
-.dayend-icon-box {
-    width: 48px;
-    height: 48px;
-    background: #ff7f27;
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #ffffff;
-    box-shadow: 0 4px 10px rgba(255, 127, 39, 0.25);
+.dayend-page-title {
+    margin: 0 !important;
+    padding: 0 !important;
+    font-size: 26px !important;
+    font-weight: 700 !important;
+    color: #1a3c5a !important;
+    font-family: inherit;
+    letter-spacing: -0.01em;
 }
 
-.dayend-header-text h2 {
-    margin: 0 0 4px 0;
-    font-size: 22px;
-    font-weight: 700;
-    color: #193b59;
-    letter-spacing: 0.2px;
-}
-
-.dayend-header-text p {
-    margin: 0;
-    font-size: 13px;
-    color: #64748b;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-}
-
-/* Control Bar Card */
+/* Control Bar Card (White Container) */
 .dayend-control-card {
     background: #ffffff;
     border-radius: 12px;
@@ -73,8 +45,43 @@
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
     display: flex;
     align-items: center;
-    justify-content: flex-start;
+    justify-content: space-between;
     gap: 14px;
+}
+
+.dayend-control-left {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+}
+
+/* Download Icon Button on Right side */
+.dayend-download-btn-inside {
+    background: #ff7f27;
+    color: white;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    box-shadow: 0 2px 6px rgba(255, 127, 39, 0.2);
+}
+
+.dayend-download-btn-inside:hover {
+    background: #e06c1b;
+    transform: scale(1.05);
+    box-shadow: 0 2px 8px rgba(255, 127, 39, 0.25);
+}
+
+.dayend-download-btn-inside svg {
+    width: 18px;
+    height: 18px;
 }
 
 .dayend-date-picker {
@@ -161,7 +168,7 @@
     background: #ffffff;
     border-radius: 12px;
     overflow: hidden;
-    border: 1px solid #efe6da;
+    border: 1px solid #F0E2D5;
     box-shadow: 0 4px 14px rgba(0, 0, 0, 0.03);
 }
 
@@ -173,106 +180,161 @@
 
 .dayend-table th.dayend-th-particular {
     width: 50%;
-    background: #ff7f27 !important;
+    background: #FF7417 !important;
     color: #ffffff !important;
     padding: 12px 20px;
     font-size: 15px;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    text-align: left !important;
-    border-right: 1px solid rgba(255, 255, 255, 0.3);
+    text-align: center !important;
+    border: 1px solid #F0E2D5 !important;
 }
 
 .dayend-table th.dayend-th-amount {
     width: 50%;
-    background: #ff7f27 !important;
+    background: #FF7417 !important;
     color: #ffffff !important;
     padding: 12px 20px;
     font-size: 15px;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    text-align: right !important;
+    text-align: center !important;
+    border: 1px solid #F0E2D5 !important;
 }
 
-/* Section Headings */
+/* Section Headings - Center Alignment in PARTICULARS column with Subtle Light Peach Background */
 .dayend-section-head td {
-    background-color: #fff0e5 !important;
-    color: #7a2e1e !important;
+    background-color: #FCE8D8 !important;
+    color: #193b59 !important;
     font-weight: 700 !important;
-    font-size: 14px !important;
+    font-size: 15px !important;
     letter-spacing: 0.5px;
     text-transform: uppercase;
-    text-align: left !important;
-    padding: 10px 20px !important;
-    border-bottom: 1px solid #fce3d0 !important;
-    border-top: 1px solid #fce3d0 !important;
+    text-align: center !important;
+    padding: 10px 18px !important;
+    border: 1px solid #F0E2D5 !important;
+}
+
+.dayend-section-title,
+.dayend-section-title strong,
+.dayend-section-head strong {
+    font-weight: 700 !important;
 }
 
 /* Table Cells */
 .dayend-table td {
-    font-size: 15px;
+    font-size: 14px;
     color: #193b59;
-    border-bottom: 1px solid #f2eade;
     height: 42px;
     box-sizing: border-box;
+    border: 1px solid #F0E2D5 !important;
+}
+
+/* Alternating rows: White (#FFFFFF) and Light Grey (#FAFAFA) */
+.dayend-table tbody tr.dayend-data-row:nth-child(odd) {
+    background-color: #FFFFFF;
+}
+
+.dayend-table tbody tr.dayend-data-row:nth-child(even) {
+    background-color: #FAFAFA;
 }
 
 .dayend-td-particular {
-    text-align: left !important;
-    padding-left: 20px !important;
-    border-right: 1px solid #f2eade;
+    text-align: center !important;
+    padding: 10px 14px !important;
+    font-size: 14px !important;
 }
 
 .dayend-td-amount {
-    text-align: right !important;
-    padding-right: 20px !important;
+    text-align: center !important;
+    padding: 10px 14px !important;
+    font-size: 14px !important;
 }
 
-/* Paymode Combined Cell (Count + Amount 3-Column Layout) */
-.dayend-td-paymode-combined {
-    padding: 0 !important;
-    height: 42px;
-}
-
-.dayend-td-paymode-combined {
-    display: flex;
-    align-items: center;
-    height: 100%;
-    width: 100%;
-}
-
-.dayend-paymode-col-count {
-    width: 40%;
-    text-align: center;
-    border-right: 1px solid #f2eade;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.dayend-paymode-col-amount {
-    width: 60%;
-    text-align: right;
-    padding-right: 20px;
-    box-sizing: border-box;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-}
-
-/* Total Rows Highlight */
+/* Total Rows Highlight with Light Peach Background */
 .dayend-total-row td {
-    background-color: #fff0e5 !important;
-    border-top: 1px solid #fcdcc5 !important;
-    border-bottom: 1px solid #fcdcc5 !important;
+    background-color: #FCE8D8 !important;
+    text-align: center !important;
+    border: 1px solid #F0E2D5 !important;
+    font-size: 15px !important;
+    font-weight: 700 !important;
 }
 
 .dayend-bold-text {
     font-weight: 700 !important;
-    font-size: 16px !important;
-    color: #7a2e1e !important;
+    font-size: 15px !important;
+    color: #193b59 !important;
+}
+
+/* Download Dropdown Container and Menu */
+.download-dropdown-wrapper {
+    position: relative;
+    display: inline-block;
+}
+
+.download-dropdown-menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    background: #ffffff;
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.06);
+    padding: 6px 0;
+    min-width: 140px;
+    z-index: 1000;
+    border: 1px solid #f0eee9;
+    animation: dayendDropdownFadeIn 0.15s ease-out;
+}
+
+@keyframes dayendDropdownFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.download-dropdown-item {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 16px;
+    background: none;
+    border: none;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    color: #333333;
+    cursor: pointer;
+    text-align: left;
+    transition: background-color 0.15s ease;
+}
+
+.download-dropdown-item:hover {
+    background-color: #f7f5f0;
+}
+
+.download-dropdown-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+}
+
+.download-dropdown-icon.print {
+    color: #ff7f27;
+}
+
+.download-dropdown-icon.pdf {
+    color: #ff7f27;
+}
+
+.download-dropdown-icon.excel {
+    color: #ff7f27;
 }
