@@ -1,21 +1,18 @@
-/* SalesReportChart.css */
-.sales-chart-card {
+/* SalesReportChart.css - Unified Styling for Screen & Report Chart Views */
+
+.sales-report-chart-card {
   background: #ffffff;
   border-radius: 12px;
   border: 1px solid #e2e8f0;
   box-shadow: 0 4px 16px rgba(15, 23, 42, 0.06);
-  padding: 20px 24px;
+  padding: 22px 26px;
   margin-bottom: 24px;
   color: #1e293b;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  transition: box-shadow 0.2s ease;
+  box-sizing: border-box;
 }
 
-.sales-chart-card:hover {
-  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.09);
-}
-
-.sales-chart-header {
+.sales-chart-card-header {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -26,59 +23,22 @@
   margin-bottom: 20px;
 }
 
-.sales-chart-title-area {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.sales-chart-title {
+.sales-chart-heading {
   margin: 0;
-  font-size: 1.15rem;
+  font-size: 1.2rem;
   font-weight: 700;
   color: #0f172a;
-  display: flex;
-  align-items: center;
-  gap: 8px;
 }
 
-.sales-chart-period {
-  font-size: 0.8rem;
+.sales-chart-sub {
+  font-size: 0.82rem;
   color: #64748b;
   font-weight: 500;
+  margin-top: 4px;
+  display: block;
 }
 
-.sales-chart-controls {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.sales-chart-kpi-summary {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-  background: #f8fafc;
-  padding: 6px 14px;
-  border-radius: 8px;
-  border: 1px solid #e2e8f0;
-}
-
-.sales-chart-kpi-label {
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: #64748b;
-}
-
-.sales-chart-kpi-val {
-  font-size: 1.05rem;
-  font-weight: 700;
-  color: #ff6b00;
-}
-
-.sales-chart-type-toggle {
+.sales-chart-type-tabs {
   display: inline-flex;
   background: #f1f5f9;
   padding: 3px;
@@ -86,58 +46,69 @@
   gap: 2px;
 }
 
-.sales-chart-toggle-btn {
+.sales-chart-tab-btn {
   border: none;
   background: transparent;
   color: #64748b;
   font-size: 0.82rem;
   font-weight: 600;
-  padding: 6px 12px;
+  padding: 6px 14px;
   border-radius: 6px;
   cursor: pointer;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 6px;
   transition: all 0.15s ease;
 }
 
-.sales-chart-toggle-btn:hover {
+.sales-chart-tab-btn:hover {
   color: #0f172a;
 }
 
-.sales-chart-toggle-btn.active {
+.sales-chart-tab-btn.active {
   background: #ffffff;
-  color: #ff6b00;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  color: #ff7f27;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
 }
 
 .sales-chart-body {
-  position: relative;
   width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 10px 0;
   min-height: 280px;
 }
 
-/* Donut Layout */
-.sales-chart-donut-layout {
+/* Donut Chart Layout */
+.sales-donut-container {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: center;
-  gap: 32px;
-  padding: 10px 0;
+  gap: 40px;
+  width: 100%;
 }
 
-.sales-chart-donut-visual {
+.sales-donut-svg-wrap {
   position: relative;
-  width: 220px;
-  height: 220px;
+  width: 260px;
+  height: 260px;
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
 }
 
-.sales-chart-donut-center {
+.sales-donut-slice {
+  transition: transform 0.2s ease, opacity 0.2s ease;
+  cursor: pointer;
+}
+
+.sales-donut-slice:hover {
+  opacity: 0.88;
+}
+
+.sales-donut-center-badge {
   position: absolute;
   display: flex;
   flex-direction: column;
@@ -147,26 +118,28 @@
   text-align: center;
 }
 
-.sales-chart-donut-center-label {
+.sales-donut-center-title {
   font-size: 0.72rem;
-  color: #64748b;
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
+  color: #64748b;
+  letter-spacing: 0.5px;
 }
 
-.sales-chart-donut-center-val {
+.sales-donut-center-value {
   font-size: 1.15rem;
-  font-weight: 700;
+  font-weight: 800;
   color: #0f172a;
+  margin-top: 2px;
 }
 
 .sales-chart-legend {
-  flex: 1;
-  min-width: 240px;
-  max-width: 450px;
   display: flex;
   flex-direction: column;
   gap: 8px;
+  max-width: 420px;
+  flex: 1;
+  min-width: 250px;
 }
 
 .sales-chart-legend-item {
@@ -176,12 +149,8 @@
   padding: 6px 10px;
   border-radius: 6px;
   background: #f8fafc;
-  transition: background 0.15s ease;
   font-size: 0.85rem;
-}
-
-.sales-chart-legend-item:hover {
-  background: #f1f5f9;
+  border: 1px solid #f1f5f9;
 }
 
 .sales-chart-legend-key {
@@ -189,20 +158,20 @@
   align-items: center;
   gap: 8px;
   font-weight: 600;
-  color: #334155;
+  color: #1e293b;
 }
 
 .sales-chart-color-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
   flex-shrink: 0;
 }
 
 .sales-chart-legend-stats {
   display: flex;
   align-items: baseline;
-  gap: 10px;
+  gap: 8px;
 }
 
 .sales-chart-legend-amt {
@@ -217,36 +186,29 @@
   text-align: right;
 }
 
-/* Scrollable Bar/Line container */
+/* Bar Chart Layout */
+.sales-chart-multi-wrap {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
 .sales-chart-scroll-wrap {
   width: 100%;
   overflow-x: auto;
   overflow-y: hidden;
-  padding-bottom: 8px;
+  padding-bottom: 12px;
 }
 
-.sales-chart-scroll-wrap::-webkit-scrollbar {
-  height: 6px;
-}
-
-.sales-chart-scroll-wrap::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 4px;
-}
-
-.sales-chart-scroll-wrap::-webkit-scrollbar-track {
-  background: #f1f5f9;
-}
-
-/* Bar Chart styling */
 .sales-bar-container {
   display: flex;
   align-items: flex-end;
-  gap: 14px;
-  height: 240px;
-  padding: 30px 10px 10px 10px;
-  border-bottom: 2px solid #e2e8f0;
+  gap: 16px;
+  height: 220px;
+  padding: 20px 20px 10px 20px;
   min-width: 100%;
+  box-sizing: border-box;
 }
 
 .sales-bar-col {
@@ -255,108 +217,69 @@
   align-items: center;
   height: 100%;
   justify-content: flex-end;
-  flex: 1 1 48px;
-  min-width: 44px;
-  max-width: 80px;
-  position: relative;
+  min-width: 50px;
 }
 
 .sales-bar-fill-wrap {
+  position: relative;
+  height: 160px;
   width: 100%;
-  height: 100%;
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  position: relative;
 }
 
 .sales-bar-fill {
-  width: 70%;
-  max-width: 38px;
-  background: linear-gradient(180deg, #ff7f27 0%, #ea580c 100%);
+  width: 24px;
   border-radius: 4px 4px 0 0;
-  transition: all 0.25s ease;
+  transition: height 0.3s ease;
   position: relative;
-  cursor: pointer;
 }
 
-.sales-bar-col:hover .sales-bar-fill {
-  background: linear-gradient(180deg, #fb923c 0%, #f97316 100%);
-  filter: brightness(1.08);
+.sales-bar-label {
+  font-size: 0.75rem;
+  color: #64748b;
+  font-weight: 500;
+  margin-top: 8px;
+  text-align: center;
+  white-space: nowrap;
 }
 
 .sales-bar-tooltip {
+  display: none;
   position: absolute;
   bottom: calc(100% + 6px);
-  left: 50%;
-  transform: translateX(-50%);
   background: #0f172a;
   color: #ffffff;
   padding: 4px 8px;
   border-radius: 4px;
   font-size: 0.72rem;
-  font-weight: 600;
   white-space: nowrap;
   pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.15s ease, transform 0.15s ease;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
   z-index: 10;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
-.sales-bar-col:hover .sales-bar-tooltip {
-  opacity: 1;
-  transform: translateX(-50%) translateY(-2px);
+.sales-bar-fill-wrap:hover .sales-bar-tooltip {
+  display: block;
 }
 
-.sales-bar-label {
-  font-size: 0.72rem;
-  color: #64748b;
-  font-weight: 600;
-  margin-top: 8px;
-  text-align: center;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
-}
-
-/* SVG Line Chart styling */
+/* Line Chart Layout */
 .sales-line-svg-wrap {
   width: 100%;
-  height: 250px;
-  position: relative;
+  height: 230px;
 }
 
 .sales-line-svg {
   width: 100%;
   height: 100%;
-  overflow: visible;
-}
-
-.sales-line-labels-x {
-  display: flex;
-  justify-content: space-between;
-  padding: 8px 10px 0 10px;
-  border-top: 1px solid #e2e8f0;
-}
-
-.sales-line-x-label {
-  font-size: 0.72rem;
-  color: #64748b;
-  font-weight: 500;
-  text-align: center;
-  white-space: nowrap;
+  display: block;
 }
 
 .sales-chart-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 40px 20px;
   color: #94a3b8;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   font-weight: 500;
+  padding: 60px 0;
+  text-align: center;
 }
-

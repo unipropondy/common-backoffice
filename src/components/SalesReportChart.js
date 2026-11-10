@@ -13,6 +13,10 @@ const PALETTE = [
   "#64748b", // Slate
   "#14b8a6", // Teal
   "#e11d48", // Rose
+  "#6366f1", // Indigo
+  "#84cc16", // Lime
+  "#d97706", // Ochre
+  "#0284c7", // Light Blue
 ];
 
 const formatCurrency = (val) => {
@@ -31,17 +35,21 @@ export default function SalesReportChart({
   toDate,
   chartType,
   onChartTypeChange,
+  availablePaymodes = [],
+  paymodeData = null,
+  paymodeDateWise = [],
 }) {
   const [internalViewType, setInternalViewType] = useState(null);
 
   const isTransaction = reportKey === "Transaction";
   const isPaymode = reportKey === "Paymode";
+  const isAnalysis = reportKey === "Analysis";
 
   // Effective chart type
   const activeType =
     internalViewType ||
     chartType ||
-    (isTransaction || isPaymode ? "donut" : "bar");
+    (isTransaction || isPaymode || isAnalysis ? "donut" : "bar");
 
   const handleTypeChange = (newType) => {
     setInternalViewType(newType);
@@ -50,21 +58,62 @@ export default function SalesReportChart({
     }
   };
 
-  // Process data based on reportKey
-  const { chartItems, totalValue, isCountMetric } = useMemo(() => {
-    if (!Array.isArray(data) || data.length === 0) {
-      return { chartItems: [], totalValue: 0, isCountMetric: false };
-    }
-
-    const cleanRows = data.filter(
+  // 1. Process data for Multi-series / Donut / Bar / Line
+  const { chartItems, totalValue, isCountMetric, dynamicModes, dateWiseSeries } = useMemo(() => {
+    const cleanRows = (Array.isArray(data) ? data : []).filter(
       (r) =>
         r &&
         !r.isTotalRow &&
         !r.isGrandTotal &&
         !r.isCategoryHeader &&
         !r.isDishGroupHeader &&
-        !r.isSpacer
+        !r.isSpacer &&
+        r.Date !== "Grand Total:" &&
+        r.Date !== "TOTAL"
     );
+
+    // Dynamic Paymodes list resolution
+    const detectedModes =
+      availablePaymodes && availablePaymodes.length > 0
+        ? availablePaymodes
+        : (isPaymode && cleanRows.length > 0)
+        ? Object.keys(cleanRows[0]).filter(
+            (k) =>
+              k !== "Date" &&
+              k !== "Total" &&
+              k !== "SortDate" &&
+              !k.startsWith("is")
+          )
+        : paymodeData
+        ? Object.keys(paymodeData).filter(
+            (k) =>
+              k !== "Date" &&
+              k !== "Total" &&
+              k !== "SortDate" &&
+              !k.startsWith("is")
+          )
+        : [];
+
+    // Date-wise multi-series data source
+    const rawDateWise =
+      isPaymode
+        ? cleanRows
+        : isAnalysis && paymodeDateWise && paymodeDateWise.length > 0
+        ? paymodeDateWise
+        : cleanRows;
+
+    const dateWise = rawDateWise.map((r) => {
+      const rowDate = r.Date || r.InvoiceDate || "-";
+      const modeAmounts = {};
+      detectedModes.forEach((pm) => {
+        modeAmounts[pm] = parseFloat(r[pm] || 0) || 0;
+      });
+      return {
+        date: rowDate,
+        total: parseFloat(r.Total || 0) || Object.values(modeAmounts).reduce((a, b) => a + b, 0),
+        modes: modeAmounts,
+      };
+    });
 
     if (isTransaction) {
       const totalCashIn = cleanRows.reduce(
@@ -91,75 +140,45 @@ export default function SalesReportChart({
           color: "#ef4444",
         });
       }
-      return { chartItems: items, totalValue: total, isCountMetric: false };
+      return { chartItems: items, totalValue: total, isCountMetric: false, dynamicModes: [], dateWiseSeries: [] };
     }
 
-    if (isPaymode) {
-      const modes = [
-        { label: "Cash", keys: ["Cash", "cash"] },
-        { label: "NETS", keys: ["Nets", "NETS", "nets"] },
-        { label: "PayNow", keys: ["PayNow", "Paynow", "paynow"] },
-        { label: "UPI", keys: ["UPI", "Upi", "upi"] },
-        { label: "Member", keys: ["Member", "member"] },
-        { label: "Credit Card", keys: ["Credit", "credit", "CreditCard"] },
-        { label: "Online", keys: ["Online", "online"] },
-        {
-          label: "YeahPay PayNow",
-          keys: ["YeahPay_PayNow", "Yeahpay_Paynow", "YeahPayPayNow"],
-        },
-        {
-          label: "YeahPay Card",
-          keys: ["YeahPay_Card", "Yeahpay_Card", "YeahPayCard"],
-        },
-      ];
-
-      // Check if data is already grouped by mode column (rows have PaymentMode and Amount)
-      const hasPaymentModeCol = cleanRows.some(
-        (r) => r.PaymentMode || r.Paymentmode || r.Paymode
-      );
-
-      let items = [];
-      if (hasPaymentModeCol) {
-        const modeMap = {};
-        cleanRows.forEach((r) => {
-          const mode =
-            r.PaymentMode || r.Paymentmode || r.Paymode || "Other";
-          const amt =
-            parseFloat(r.Amount || r.TotalAmount || r.NetSales || r.Total || 0) ||
-            0;
-          modeMap[mode] = (modeMap[mode] || 0) + amt;
-        });
-        items = Object.keys(modeMap)
-          .map((label, idx) => ({
-            label,
-            value: Number(modeMap[label].toFixed(2)),
+    if (isPaymode || (isAnalysis && detectedModes.length > 0)) {
+      // Aggregate totals for each Paymode dynamically
+      const items = detectedModes
+        .map((pm, idx) => {
+          let val = 0;
+          if (isPaymode) {
+            val = cleanRows.reduce(
+              (sum, r) => sum + (parseFloat(r[pm]) || 0),
+              0
+            );
+          } else if (isAnalysis) {
+            if (paymodeData && paymodeData[pm] !== undefined) {
+              val = parseFloat(paymodeData[pm]) || 0;
+            } else {
+              val = rawDateWise.reduce(
+                (sum, r) => sum + (parseFloat(r[pm]) || 0),
+                0
+              );
+            }
+          }
+          return {
+            label: pm,
+            value: Number(val.toFixed(2)),
             color: PALETTE[idx % PALETTE.length],
-          }))
-          .filter((it) => it.value > 0);
-      } else {
-        items = modes
-          .map((m, idx) => {
-            const val = cleanRows.reduce((sum, r) => {
-              let v = 0;
-              for (const k of m.keys) {
-                if (r[k] !== undefined && r[k] !== null) {
-                  v = parseFloat(r[k]) || 0;
-                  break;
-                }
-              }
-              return sum + v;
-            }, 0);
-            return {
-              label: m.label,
-              value: Number(val.toFixed(2)),
-              color: PALETTE[idx % PALETTE.length],
-            };
-          })
-          .filter((it) => it.value > 0);
-      }
+          };
+        })
+        .filter((it) => it.value > 0);
 
       const total = items.reduce((sum, it) => sum + it.value, 0);
-      return { chartItems: items, totalValue: total, isCountMetric: false };
+      return {
+        chartItems: items,
+        totalValue: total,
+        isCountMetric: false,
+        dynamicModes: detectedModes,
+        dateWiseSeries: dateWise,
+      };
     }
 
     // General Reports (Hourly, Daywise, Group, Itemwise, TopNItems, etc.)
@@ -178,35 +197,23 @@ export default function SalesReportChart({
         r.Time ||
         r.Date ||
         r.InvoiceDate ||
-        r.BillDate ||
-        r.Month ||
         r.CategoryName ||
-        r.Category ||
-        r.DishGroupName ||
-        r.DishGroup ||
         r.Group ||
-        r.BusinessType ||
-        r.MealPeriod ||
-        r.Description ||
         `#${idx + 1}`;
-
-      const rawVal = isQtyBased
-        ? r.Qty || r.Sold || r.Quantity || r.Amount || 0
-        : r.Amount ||
-          r.SalesAmount ||
-          r.NetSales ||
-          r.TotalAmount ||
-          r.NetTotal ||
-          r.TotalSales ||
-          r.SubTotal ||
-          r.Total ||
-          r.Qty ||
-          0;
-
-      const value = parseFloat(rawVal) || 0;
+      const val =
+        parseFloat(
+          isQtyBased
+            ? r.Qty || r.Quantity || r.TotalQty || 0
+            : r.Amount ||
+              r.SalesAmount ||
+              r.TotalAmount ||
+              r.NetSales ||
+              r.Total ||
+              0
+        ) || 0;
       return {
         label: String(label).trim(),
-        value: Number(value.toFixed(2)),
+        value: Number(val.toFixed(2)),
         color: PALETTE[idx % PALETTE.length],
       };
     });
@@ -216,87 +223,99 @@ export default function SalesReportChart({
       chartItems: items,
       totalValue: total,
       isCountMetric: isQtyBased,
+      dynamicModes: [],
+      dateWiseSeries: [],
     };
-  }, [data, reportKey, isTransaction, isPaymode]);
+  }, [data, reportKey, isTransaction, isPaymode, isAnalysis, availablePaymodes, paymodeData, paymodeDateWise]);
 
-  if (!chartItems || chartItems.length === 0) {
-    return (
-      <div className="sales-chart-card">
-        <div className="sales-chart-header">
-          <div className="sales-chart-title-area">
-            <h3 className="sales-chart-title">{reportTitle || "Sales Visual Overview"}</h3>
-            {fromDate && toDate && (
-              <span className="sales-chart-period">
-                Period: {fromDate} ~ {toDate}
-              </span>
-            )}
-          </div>
-        </div>
-        <div className="sales-chart-empty">
-          <span>📊 No visual chart data available for the selected criteria</span>
-        </div>
-      </div>
-    );
-  }
+  // Max value for single series
+  const maxValue = useMemo(() => {
+    if (!chartItems || chartItems.length === 0) return 0;
+    return Math.max(...chartItems.map((it) => it.value), 0);
+  }, [chartItems]);
 
-  const maxValue = Math.max(...chartItems.map((d) => d.value), 1);
+  // Max value for multi-series date-wise
+  const maxDateWiseTotal = useMemo(() => {
+    if (!dateWiseSeries || dateWiseSeries.length === 0) return 0;
+    return Math.max(...dateWiseSeries.map((d) => d.total), 1);
+  }, [dateWiseSeries]);
 
-  // SVG calculations for Donut Chart
+  // Render Dynamic Donut Chart
   const renderDonut = () => {
-    const size = 200;
-    const strokeWidth = 32;
-    const radius = (size - strokeWidth) / 2;
-    const circumference = 2 * Math.PI * radius;
+    if (chartItems.length === 0 || totalValue === 0) {
+      return (
+        <div className="sales-chart-empty">No data available for chart</div>
+      );
+    }
 
-    let accumulatedPct = 0;
-    const slices = chartItems.map((item) => {
-      const pct = totalValue > 0 ? item.value / totalValue : 0;
-      const strokeDashoffset = circumference * (1 - pct);
-      const rotation = accumulatedPct * 360 - 90;
-      accumulatedPct += pct;
+    const size = 260;
+    const center = size / 2;
+    const radius = 100;
+    const innerRadius = 60;
 
+    let accumulatedAngle = -Math.PI / 2;
+
+    const slices = chartItems.map((item, idx) => {
+      const fraction = totalValue > 0 ? item.value / totalValue : 0;
+      const angle = fraction * 2 * Math.PI;
+      const startAngle = accumulatedAngle;
+      const endAngle = accumulatedAngle + angle;
+      accumulatedAngle = endAngle;
+
+      const x1 = center + radius * Math.cos(startAngle);
+      const y1 = center + radius * Math.sin(startAngle);
+      const x2 = center + radius * Math.cos(endAngle);
+      const y2 = center + radius * Math.sin(endAngle);
+
+      const x3 = center + innerRadius * Math.cos(endAngle);
+      const y3 = center + innerRadius * Math.sin(endAngle);
+      const x4 = center + innerRadius * Math.cos(startAngle);
+      const y4 = center + innerRadius * Math.sin(startAngle);
+
+      const largeArcFlag = angle > Math.PI ? 1 : 0;
+
+      const pathData =
+        chartItems.length === 1
+          ? `M ${center - radius}, ${center} A ${radius} ${radius} 0 1 0 ${
+              center + radius
+            } ${center} A ${radius} ${radius} 0 1 0 ${
+              center - radius
+            } ${center} M ${center - innerRadius}, ${center} A ${innerRadius} ${innerRadius} 0 1 1 ${
+              center + innerRadius
+            } ${center} A ${innerRadius} ${innerRadius} 0 1 1 ${
+              center - innerRadius
+            } ${center}`
+          : `M ${x1} ${y1} A ${radius} ${radius} 0 ${largeArcFlag} 1 ${x2} ${y2} L ${x3} ${y3} A ${innerRadius} ${innerRadius} 0 ${largeArcFlag} 0 ${x4} ${y4} Z`;
+
+      const pct = (fraction * 100).toFixed(1);
       return {
         ...item,
-        pct: Number((pct * 100).toFixed(1)),
-        strokeDashoffset,
-        strokeDasharray: circumference,
-        rotation,
+        pathData,
+        pct,
+        color: item.color || PALETTE[idx % PALETTE.length],
       };
     });
 
     return (
-      <div className="sales-chart-donut-layout">
-        <div className="sales-chart-donut-visual">
+      <div className="sales-donut-container">
+        <div className="sales-donut-svg-wrap">
           <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-            <circle
-              cx={size / 2}
-              cy={size / 2}
-              r={radius}
-              fill="transparent"
-              stroke="#f1f5f9"
-              strokeWidth={strokeWidth}
-            />
             {slices.map((slice, i) => (
-              <circle
+              <path
                 key={i}
-                cx={size / 2}
-                cy={size / 2}
-                r={radius}
-                fill="transparent"
-                stroke={slice.color}
-                strokeWidth={strokeWidth}
-                strokeDasharray={slice.strokeDasharray}
-                strokeDashoffset={slice.strokeDashoffset}
-                transform={`rotate(${slice.rotation} ${size / 2} ${size / 2})`}
-                style={{
-                  transition: "stroke-dashoffset 0.5s ease",
-                }}
-              />
+                d={slice.pathData}
+                fill={slice.color}
+                stroke="#ffffff"
+                strokeWidth="2"
+                className="sales-donut-slice"
+              >
+                <title>{`${slice.label}: ${formatCurrency(slice.value)} (${slice.pct}%)`}</title>
+              </path>
             ))}
           </svg>
-          <div className="sales-chart-donut-center">
-            <span className="sales-chart-donut-center-label">Total</span>
-            <span className="sales-chart-donut-center-val">
+          <div className="sales-donut-center-badge">
+            <span className="sales-donut-center-title">Total</span>
+            <span className="sales-donut-center-value">
               {isCountMetric ? totalValue.toLocaleString() : formatCurrency(totalValue)}
             </span>
           </div>
@@ -327,8 +346,60 @@ export default function SalesReportChart({
     );
   };
 
-  // Render Bar Chart
+  // Render Bar Chart (Supports multi-series grouped by date for Paymode/Analysis)
   const renderBars = () => {
+    if ((isPaymode || isAnalysis) && dateWiseSeries.length > 0 && dynamicModes.length > 0) {
+      // Grouped Multi-Paymode Bar Chart by Date
+      return (
+        <div className="sales-chart-multi-wrap">
+          <div className="sales-chart-scroll-wrap">
+            <div className="sales-bar-container">
+              {dateWiseSeries.map((item, idx) => {
+                return (
+                  <div key={idx} className="sales-bar-col" style={{ minWidth: `${Math.max(dynamicModes.length * 18, 70)}px` }}>
+                    <div className="sales-bar-fill-wrap" style={{ display: "flex", alignItems: "flex-end", gap: "2px" }}>
+                      {dynamicModes.map((pm, pmIdx) => {
+                        const amt = item.modes[pm] || 0;
+                        const heightPct = Math.max((amt / maxDateWiseTotal) * 100, amt > 0 ? 3 : 0);
+                        const pmColor = PALETTE[pmIdx % PALETTE.length];
+                        return (
+                          <div
+                            key={pmIdx}
+                            style={{
+                              width: "12px",
+                              height: `${heightPct}%`,
+                              backgroundColor: pmColor,
+                              borderRadius: "2px 2px 0 0",
+                              transition: "height 0.3s ease",
+                              position: "relative",
+                            }}
+                            title={`Date: ${item.date} | ${pm}: ${formatCurrency(amt)}`}
+                          />
+                        );
+                      })}
+                    </div>
+                    <span className="sales-bar-label" title={item.date}>
+                      {item.date}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          {/* Dynamic Legend */}
+          <div className="sales-multi-legend" style={{ display: "flex", flexWrap: "wrap", gap: "12px", marginTop: "14px", justifyContent: "center" }}>
+            {dynamicModes.map((pm, i) => (
+              <div key={i} style={{ display: "inline-flex", alignItems: "center", fontSize: "12px", fontWeight: "600", color: "#334155" }}>
+                <span style={{ display: "inline-block", width: "10px", height: "10px", borderRadius: "2px", backgroundColor: PALETTE[i % PALETTE.length], marginRight: "5px" }} />
+                {pm}
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    // Default Single Series Bar Chart
     return (
       <div className="sales-chart-scroll-wrap">
         <div className="sales-bar-container">
@@ -337,9 +408,7 @@ export default function SalesReportChart({
             return (
               <div key={idx} className="sales-bar-col">
                 <div className="sales-bar-fill-wrap">
-                  <div
-                    className="sales-bar-tooltip"
-                  >
+                  <div className="sales-bar-tooltip">
                     <div>{item.label}</div>
                     <div>
                       {isCountMetric
@@ -366,8 +435,80 @@ export default function SalesReportChart({
     );
   };
 
-  // Render SVG Line Chart
+  // Render SVG Line Chart (Multi-line for Paymode/Analysis date-wise, single-line otherwise)
   const renderLine = () => {
+    if ((isPaymode || isAnalysis) && dateWiseSeries.length > 1 && dynamicModes.length > 0) {
+      const width = 1000;
+      const height = 240;
+      const paddingX = 40;
+      const paddingY = 30;
+      const innerWidth = width - paddingX * 2;
+      const innerHeight = height - paddingY * 2;
+
+      // Lines per paymode
+      const lines = dynamicModes.map((pm, pmIdx) => {
+        const color = PALETTE[pmIdx % PALETTE.length];
+        const points = dateWiseSeries.map((d, i) => {
+          const amt = d.modes[pm] || 0;
+          const x = paddingX + (i / (dateWiseSeries.length - 1)) * innerWidth;
+          const y = height - paddingY - (maxDateWiseTotal > 0 ? (amt / maxDateWiseTotal) * innerHeight : 0);
+          return { x, y, amt, date: d.date, pm };
+        });
+        const polyline = points.map((p) => `${p.x},${p.y}`).join(" ");
+        return { pm, color, points, polyline };
+      });
+
+      return (
+        <div className="sales-chart-multi-wrap">
+          <div className="sales-chart-scroll-wrap">
+            <div className="sales-line-svg-wrap" style={{ minWidth: `${Math.max(dateWiseSeries.length * 60, 600)}px` }}>
+              <svg viewBox={`0 0 ${width} ${height}`} className="sales-line-svg" preserveAspectRatio="none">
+                <line x1={paddingX} y1={paddingY} x2={width - paddingX} y2={paddingY} stroke="#f1f5f9" strokeDasharray="4 4" />
+                <line x1={paddingX} y1={height - paddingY} x2={width - paddingX} y2={height - paddingY} stroke="#cbd5e1" strokeWidth="1.5" />
+
+                {lines.map((line, li) => (
+                  <polyline
+                    key={li}
+                    points={line.polyline}
+                    fill="none"
+                    stroke={line.color}
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                ))}
+
+                {lines.map((line) =>
+                  line.points.map((p, pi) => (
+                    <circle
+                      key={`${line.pm}-${pi}`}
+                      cx={p.x}
+                      cy={p.y}
+                      r="3.5"
+                      fill="#ffffff"
+                      stroke={line.color}
+                      strokeWidth="2"
+                    >
+                      <title>{`Date: ${p.date} | ${line.pm}: ${formatCurrency(p.amt)}`}</title>
+                    </circle>
+                  ))
+                )}
+              </svg>
+            </div>
+          </div>
+          {/* Legend */}
+          <div className="sales-multi-legend" style={{ display: "flex", flexWrap: "wrap", gap: "12px", marginTop: "14px", justifyContent: "center" }}>
+            {dynamicModes.map((pm, i) => (
+              <div key={i} style={{ display: "inline-flex", alignItems: "center", fontSize: "12px", fontWeight: "600", color: "#334155" }}>
+                <span style={{ display: "inline-block", width: "10px", height: "10px", borderRadius: "2px", backgroundColor: PALETTE[i % PALETTE.length], marginRight: "5px" }} />
+                {pm}
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
     if (chartItems.length < 2) {
       return renderBars();
     }
@@ -396,15 +537,21 @@ export default function SalesReportChart({
 
     return (
       <div className="sales-chart-scroll-wrap">
-        <div className="sales-line-svg-wrap" style={{ minWidth: `${Math.max(chartItems.length * 48, 600)}px` }}>
-          <svg viewBox={`0 0 ${width} ${height}`} className="sales-line-svg" preserveAspectRatio="none">
+        <div
+          className="sales-line-svg-wrap"
+          style={{ minWidth: `${Math.max(chartItems.length * 48, 600)}px` }}
+        >
+          <svg
+            viewBox={`0 0 ${width} ${height}`}
+            className="sales-line-svg"
+            preserveAspectRatio="none"
+          >
             <defs>
               <linearGradient id="lineSalesGrad" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor="#ff7f27" stopOpacity="0.35" />
                 <stop offset="100%" stopColor="#ff7f27" stopOpacity="0.02" />
               </linearGradient>
             </defs>
-            {/* Horizontal guideline */}
             <line
               x1={paddingX}
               y1={paddingY}
@@ -422,10 +569,8 @@ export default function SalesReportChart({
               strokeWidth="1.5"
             />
 
-            {/* Shaded Area */}
             <polygon points={areaPoints} fill="url(#lineSalesGrad)" />
 
-            {/* Line stroke */}
             <polyline
               points={polyline}
               fill="none"
@@ -435,7 +580,6 @@ export default function SalesReportChart({
               strokeLinejoin="round"
             />
 
-            {/* Circles and values */}
             {points.map((p, i) => (
               <g key={i}>
                 <circle
@@ -445,99 +589,75 @@ export default function SalesReportChart({
                   fill="#ffffff"
                   stroke="#ff7f27"
                   strokeWidth="2.5"
-                />
+                >
+                  <title>{`${p.label}: ${
+                    isCountMetric
+                      ? `${p.value.toLocaleString()} Qty`
+                      : formatCurrency(p.value)
+                  }`}</title>
+                </circle>
               </g>
             ))}
           </svg>
-          <div className="sales-line-labels-x">
-            {chartItems.map((item, idx) => (
-              <span
-                key={idx}
-                className="sales-line-x-label"
-                style={{ width: `${100 / chartItems.length}%` }}
-                title={item.label}
-              >
-                {item.label}
-              </span>
-            ))}
-          </div>
         </div>
       </div>
     );
   };
 
   return (
-    <div className="sales-chart-card">
-      <div className="sales-chart-header">
-        <div className="sales-chart-title-area">
-          <h3 className="sales-chart-title">
-            <FaChartBar style={{ color: "#ff7f27" }} />
-            {reportTitle || "Sales Performance Overview"}
-          </h3>
-          {fromDate && toDate && (
-            <span className="sales-chart-period">
-              Period: {fromDate} ~ {toDate}
-            </span>
-          )}
+    <div className="sales-report-chart-card">
+      <div className="sales-chart-card-header">
+        <div>
+          <h4 className="sales-chart-heading">
+            {reportTitle || "Report Performance Visual"}
+          </h4>
+          <span className="sales-chart-sub">
+            {fromDate && toDate
+              ? `${fromDate} to ${toDate}`
+              : "Visual breakdown of current records"}
+          </span>
         </div>
 
-        <div className="sales-chart-controls">
-          <div className="sales-chart-kpi-summary">
-            <span className="sales-chart-kpi-label">
-              {isCountMetric ? "Total Count" : "Total Sales"}:
-            </span>
-            <span className="sales-chart-kpi-val">
-              {isCountMetric
-                ? totalValue.toLocaleString()
-                : formatCurrency(totalValue)}
-            </span>
-          </div>
-
-          <div className="sales-chart-type-toggle">
-            <button
-              type="button"
-              className={`sales-chart-toggle-btn ${
-                activeType === "bar" ? "active" : ""
-              }`}
-              onClick={() => handleTypeChange("bar")}
-              title="Bar Chart"
-            >
-              <FaChartBar /> Bar
-            </button>
-            <button
-              type="button"
-              className={`sales-chart-toggle-btn ${
-                activeType === "line" ? "active" : ""
-              }`}
-              onClick={() => handleTypeChange("line")}
-              title="Line Chart"
-            >
-              <FaChartLine /> Line
-            </button>
-            {(isPaymode || isTransaction) && (
-              <button
-                type="button"
-                className={`sales-chart-toggle-btn ${
-                  activeType === "donut" ? "active" : ""
-                }`}
-                onClick={() => handleTypeChange("donut")}
-                title="Donut Chart"
-              >
-                <FaChartPie /> Donut
-              </button>
-            )}
-          </div>
+        {/* Chart View Switcher */}
+        <div className="sales-chart-type-tabs">
+          <button
+            type="button"
+            className={`sales-chart-tab-btn ${
+              activeType === "donut" ? "active" : ""
+            }`}
+            onClick={() => handleTypeChange("donut")}
+            title="Donut Breakdown"
+          >
+            <FaChartPie /> Donut
+          </button>
+          <button
+            type="button"
+            className={`sales-chart-tab-btn ${
+              activeType === "bar" ? "active" : ""
+            }`}
+            onClick={() => handleTypeChange("bar")}
+            title="Bar Chart"
+          >
+            <FaChartBar /> Bar
+          </button>
+          <button
+            type="button"
+            className={`sales-chart-tab-btn ${
+              activeType === "line" ? "active" : ""
+            }`}
+            onClick={() => handleTypeChange("line")}
+            title="Line Trend"
+          >
+            <FaChartLine /> Line
+          </button>
         </div>
       </div>
 
       <div className="sales-chart-body">
-        {activeType === "donut"
-          ? renderDonut()
-          : activeType === "line"
-          ? renderLine()
-          : renderBars()}
+        {activeType === "donut" && renderDonut()}
+        {activeType === "bar" && renderBars()}
+        {activeType === "line" && renderLine()}
       </div>
     </div>
   );
 }
-

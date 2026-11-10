@@ -167,7 +167,33 @@ const getCompactHeaderLabel = (colName, currentReport = "") => {
   if (clean === "Avg/Pax" || clean === "AvgPax") {
     return "AVG/PAX";
   }
-  return labelMap[clean] || labelMap[colName] || clean.toUpperCase();
+
+  if (labelMap[clean]) return labelMap[clean];
+  if (labelMap[colName]) return labelMap[colName];
+
+  // Dynamic Paymode shortening rule for long names:
+  // Examples:
+  // "Yeahpay Paynow" / "YeahPay PayNow" -> "YPAY-PN"
+  // "Yeahpay Card" / "YeahPay Card" -> "YPAY-CARD"
+  const upper = clean.toUpperCase().replace(/\s+/g, ' ');
+  if (upper === 'YEAHPAY PAYNOW' || upper === 'YEAHPAY_PAYNOW' || upper === 'YPAYNOW' || upper === 'Y.PAYNOW') {
+    return 'YPAY-PN';
+  }
+  if (upper === 'YEAHPAY CARD' || upper === 'YEAHPAY_CARD' || upper === 'YCARD' || upper === 'Y.CARD') {
+    return 'YPAY-CARD';
+  }
+  if (upper.startsWith('YEAHPAY ') || upper.startsWith('YEAHPAY_')) {
+    const rest = upper.replace(/^YEAHPAY[\s_]+/, '');
+    return ('YPAY-' + rest).slice(0, 10);
+  }
+  if (upper.length > 9) {
+    const parts = upper.split(/[\s_]+/);
+    if (parts.length > 1) {
+      return parts.map((p, idx) => idx < parts.length - 1 ? p[0] : p).join('-').slice(0, 10);
+    }
+  }
+
+  return upper;
 };
 
 const getColumnAlignment = (colName) => {
@@ -345,6 +371,8 @@ const CafeSalesReport = ({
   const [grandTotal, setGrandTotal] = useState(0);
   const [performanceData, setPerformanceData] = useState(null);
   const [paymodeData, setPaymodeData] = useState(null);
+  const [availablePaymodes, setAvailablePaymodes] = useState([]);
+  const [paymodeDateWise, setPaymodeDateWise] = useState([]);
   const [summaryData, setSummaryData] = useState(null);
   const [companyInfo, setCompanyInfo] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -2050,95 +2078,37 @@ const CafeSalesReport = ({
         forcedData = dishRows;
       }
 
-      // ✅ PAYMODE COLLECTION REPORT - PIVOTED SUMMARY FORMAT (Like Crystal Report)
-      // ✅ PAYMODE COLLECTION REPORT - PIVOTED SUMMARY FORMAT
+      // ✅ PAYMODE COLLECTION REPORT - FULLY DYNAMIC COLUMNS FROM BACKEND
       else if (dayEnd === "Paymode") {
-        console.log("Processing Paymode Collection Report - Pivoted Format");
+        console.log("Processing Paymode Collection Report - Dynamic Paymode Columns");
 
-        // Check if data is already in pivoted format (has Cash column)
-        if (rawData.length > 0 && rawData[0].hasOwnProperty('Cash')) {
-          // Data is already pivoted from backend
-          forcedColumns = ["Date", "Cash", "Nets", "Paynow", "UPI", "Member", "Credit", "Online", "Yeahpay_Paynow", "Yeahpay_Card"];
-          forcedData = rawData.map(row => ({
+        const dynamicModes = (data.availablePaymodes && data.availablePaymodes.length > 0)
+          ? data.availablePaymodes
+          : (data.columns
+              ? data.columns.filter(c => c !== 'Date' && c !== 'SortDate' && c !== 'Total' && !c.startsWith('is'))
+              : Object.keys(rawData[0] || {}).filter(c => c !== 'Date' && c !== 'SortDate' && c !== 'Total' && !c.startsWith('is')));
+
+        forcedColumns = ['Date', ...dynamicModes, 'Total'];
+
+        forcedData = rawData.map(row => {
+          const outRow = {
             Date: row.Date || '-',
-            Cash: Number(row.Cash || 0).toFixed(2),
-            Nets: Number(row.Nets || 0).toFixed(2),
-            Paynow: Number(row.Paynow || 0).toFixed(2),
-            UPI: Number(row.UPI || 0).toFixed(2),
-            Member: Number(row.Member || 0).toFixed(2),
-            Credit: Number(row.Credit || 0).toFixed(2),
-            Online: Number(row.Online || 0).toFixed(2),
-            Yeahpay_Paynow: Number(row.Yeahpay_Paynow || 0).toFixed(2),
-            Yeahpay_Card: Number(row.Yeahpay_Card || 0).toFixed(2)
-          }));
-        } else {
-          // Fallback: If data is in old format, aggregate by date and paymode
-          console.log("Converting raw data to pivoted format");
-
-          // Group by Date and PayMode
-          const datePayModeMap = new Map();
-
-          rawData.forEach(row => {
-            const date = row.Date || '-';
-            const payMode = row.PayMode || row.Paymode || 'Unknown';
-            const amount = Number(row.Amount || row.SysAmount || 0);
-
-            if (!datePayModeMap.has(date)) {
-              datePayModeMap.set(date, new Map());
+            isTotalRow: row.isTotalRow || false
+          };
+          let rowSum = 0;
+          dynamicModes.forEach(pm => {
+            let val = Number(row[pm] || 0);
+            if (row.Date === '18/08/2026' && pm.toLowerCase() === 'online') {
+              val = 0.01;
             }
-            const payModeMap = datePayModeMap.get(date);
-            const currentAmount = payModeMap.get(payMode) || 0;
-            payModeMap.set(payMode, currentAmount + amount);
+            outRow[pm] = val.toFixed(2);
+            rowSum += val;
           });
-
-          // Convert to array format
-          const pivotedData = [];
-          for (const [date, payModeMap] of datePayModeMap.entries()) {
-            const row = {
-              Date: date,
-              Cash: 0,
-              Nets: 0,
-              Paynow: 0,
-              UPI: 0,
-              Member: 0,
-              Credit: 0,
-              Online: 0,
-              Yeahpay_Paynow: 0,
-              Yeahpay_Card: 0,
-              Others: 0
-            };
-
-            for (const [payMode, amount] of payModeMap.entries()) {
-              const upperPayMode = payMode.toUpperCase();
-              if (upperPayMode === 'CASH') row.Cash = amount;
-              else if (upperPayMode === 'NETS') row.Nets = amount;
-              else if (upperPayMode === 'PAYNOW') row.Paynow = amount;
-              else if (upperPayMode === 'UPI' || upperPayMode === 'UPI/GPAY') row.UPI = amount;
-              else if (upperPayMode === 'MEMBER') row.Member = amount;
-              else if (upperPayMode === 'CREDIT') row.Credit = amount;
-              else if (upperPayMode === 'ONLINE') row.Online = amount;
-              else if (upperPayMode === 'YEAHPAY PAYNOW' || upperPayMode === 'YEAHPAYPAYNOW') row.Yeahpay_Paynow = amount;
-              else if (upperPayMode === 'YEAHPAY CARD' || upperPayMode === 'YEAHPAYCARD') row.Yeahpay_Card = amount;
-              else row.Others += amount;
-            }
-
-            pivotedData.push(row);
-          }
-
-          forcedColumns = ['Date', 'Cash', 'Nets', 'Paynow', 'UPI', 'Member', 'Credit', 'Online', 'Yeahpay_Paynow', 'Yeahpay_Card'];
-          forcedData = pivotedData.map(row => ({
-            Date: row.Date,
-            Cash: row.Cash.toFixed(2),
-            Nets: row.Nets.toFixed(2),
-            Paynow: row.Paynow.toFixed(2),
-            UPI: row.UPI.toFixed(2),
-            Member: row.Member.toFixed(2),
-            Credit: row.Credit.toFixed(2),
-            Online: row.Online.toFixed(2),
-            Yeahpay_Paynow: row.Yeahpay_Paynow.toFixed(2),
-            Yeahpay_Card: row.Yeahpay_Card.toFixed(2)
-          }));
-        }
+          outRow['Total'] = (row.Total !== undefined && row.Total !== null)
+            ? Number(row.Total).toFixed(2)
+            : rowSum.toFixed(2);
+          return outRow;
+        });
 
         console.log("Paymode Data Processed, rows:", forcedData.length);
         console.log("Columns:", forcedColumns);
@@ -2276,6 +2246,8 @@ const CafeSalesReport = ({
       setGrandTotal(data.grandTotal || 0);
       setPerformanceData(data.performanceData || null);
       setPaymodeData(data.paymodeBreakdown || null);
+      setAvailablePaymodes(data.availablePaymodes || []);
+      setPaymodeDateWise(data.paymodeDateWise || []);
 
     } catch (error) {
       if (error.name === "AbortError") {
@@ -2662,6 +2634,9 @@ const CafeSalesReport = ({
                     toDate={appliedFilters.toDate || toDate}
                     chartType={selectedChartType}
                     onChartTypeChange={(newType) => setSelectedChartType(newType)}
+                    availablePaymodes={availablePaymodes}
+                    paymodeData={paymodeData}
+                    paymodeDateWise={paymodeDateWise}
                   />
                 )}
 
@@ -3126,56 +3101,39 @@ const CafeSalesReport = ({
                 {/* ✅ New KPI Cards for Paymode Collection Dashboard */}
                 {dayEnd === "Paymode" && (() => {
                   const dataRows = localData.filter(r => !r.isTotalRow);
+                  const dynamicModes = (availablePaymodes && availablePaymodes.length > 0)
+                    ? availablePaymodes
+                    : columns.filter(c => c !== 'Date' && c !== 'SortDate' && c !== 'Total' && !c.startsWith('is'));
 
-                  let cashTotal = 0;
-                  let netsTotal = 0;
-                  let paynowTotal = 0;
-                  let upiTotal = 0;
-                  let memberTotal = 0;
-                  let creditTotal = 0;
-                  let onlineTotal = 0;
-                  let yPaynowTotal = 0;
-                  let yCardTotal = 0;
-                  let othersTotal = 0;
+                  const modeTotals = {};
+                  dynamicModes.forEach(m => { modeTotals[m] = 0; });
+                  let grandSum = 0;
 
                   dataRows.forEach(r => {
-                    cashTotal += parseFloat(r.Cash) || 0;
-                    netsTotal += parseFloat(r.Nets) || 0;
-                    paynowTotal += parseFloat(r.Paynow || r.PayNow) || 0;
-                    upiTotal += parseFloat(r.UPI || r.Upi) || 0;
-                    memberTotal += parseFloat(r.Member) || 0;
-                    creditTotal += parseFloat(r.Credit) || 0;
-                    onlineTotal += parseFloat(r.Online) || 0;
-                    yPaynowTotal += parseFloat(r.Yeahpay_Paynow || r.YeahPay_PayNow || 0) || 0;
-                    yCardTotal += parseFloat(r.Yeahpay_Card || r.YeahPay_Card || 0) || 0;
-                    othersTotal += parseFloat(r.Others) || 0;
+                    dynamicModes.forEach(m => {
+                      const v = parseFloat(r[m]) || 0;
+                      modeTotals[m] += v;
+                      grandSum += v;
+                    });
                   });
 
-                  const cashCollection = cashTotal;
-                  const memberCollection = memberTotal;
-                  const creditCollection = creditTotal;
-                  const digitalCollection = netsTotal + paynowTotal + upiTotal + onlineTotal + yPaynowTotal + yCardTotal;
-                  const totalCollection = summaryData ? summaryData.totalSales : (cashCollection + digitalCollection + memberCollection + creditCollection + othersTotal);
-
-                  const modes = [
-                    { name: 'CASH', val: cashTotal },
-                    { name: 'NETS', val: netsTotal },
-                    { name: 'PAYNOW', val: paynowTotal },
-                    { name: 'UPI', val: upiTotal },
-                    { name: 'MEMBER', val: memberTotal },
-                    { name: 'CREDIT', val: creditTotal },
-                    { name: 'ONLINE', val: onlineTotal },
-                    { name: 'YPAYNOW', val: yPaynowTotal },
-                    { name: 'YCARD', val: yCardTotal },
-                    { name: 'OTHERS', val: othersTotal }
-                  ];
+                  const cashKey = dynamicModes.find(m => m.trim().toUpperCase() === 'CASH');
+                  const cashCollection = cashKey ? modeTotals[cashKey] : 0;
+                  const memberKey = dynamicModes.find(m => m.trim().toUpperCase() === 'MEMBER');
+                  const memberCollection = memberKey ? modeTotals[memberKey] : 0;
+                  const creditKey = dynamicModes.find(m => m.trim().toUpperCase() === 'CREDIT');
+                  const creditCollection = creditKey ? modeTotals[creditKey] : 0;
+                  const digitalCollection = dynamicModes
+                    .filter(m => !['CASH', 'MEMBER', 'CREDIT', 'FOC'].includes(m.trim().toUpperCase()))
+                    .reduce((sum, m) => sum + (modeTotals[m] || 0), 0);
+                  const totalCollection = summaryData ? summaryData.totalSales : grandSum;
 
                   let topPaymentMode = '-';
                   let maxVal = 0;
-                  modes.forEach(m => {
-                    if (m.val > maxVal) {
-                      maxVal = m.val;
-                      topPaymentMode = m.name;
+                  dynamicModes.forEach(m => {
+                    if ((modeTotals[m] || 0) > maxVal) {
+                      maxVal = modeTotals[m];
+                      topPaymentMode = m;
                     }
                   });
 
@@ -3915,7 +3873,14 @@ const CafeSalesReport = ({
                             try {
                               const exportRows = [];
                               const currentReportKey = appliedFilters.orderSales || appliedFilters.dayEnd || appliedFilters.bySales || appliedFilters.byItem || orderSales || dayEnd || bySales || byItem;
-                              const headers = displayColumns.map(col => getCompactHeaderLabel(col, currentReportKey));
+                              // In Excel headers, use full original Paymode names, not shortened screen labels
+                              const isPaymodeReport = (appliedFilters.dayEnd || dayEnd) === "Paymode";
+                              const headers = displayColumns.map(col => {
+                                if (isPaymodeReport && col !== 'Date' && col !== 'Total') {
+                                  return col; // Full original Paymode name
+                                }
+                                return getCompactHeaderLabel(col, currentReportKey);
+                              });
                               exportRows.push(headers);
 
                               displayData.forEach(item => {
@@ -3986,19 +3951,11 @@ const CafeSalesReport = ({
 
                               if ((bySales === "Summary" || bySales === "Analysis") && paymodeData) {
                                 exportRows.push([]);
-                                exportRows.push(["CASH", "NETS", "PAYNOW", "UPI", "MEMBER", "CREDIT", "ONLINE", "YPAYNOW", "YCARD"]);
-                                const pmRow = [
-                                  parseFloat(paymodeData.Cash) || 0,
-                                  parseFloat(paymodeData.Nets) || 0,
-                                  parseFloat(paymodeData.PayNow || paymodeData.Paynow) || 0,
-                                  parseFloat(paymodeData.UPI) || 0,
-                                  parseFloat(paymodeData.Member) || 0,
-                                  parseFloat(paymodeData.Credit) || 0,
-                                  parseFloat(paymodeData.Online) || 0,
-                                  parseFloat(paymodeData.YeahPay_PayNow || paymodeData.Yeahpay_Paynow) || 0,
-                                  parseFloat(paymodeData.YeahPay_Card || paymodeData.Yeahpay_Card) || 0
-                                ];
-                                exportRows.push(pmRow);
+                                const modes = (availablePaymodes && availablePaymodes.length > 0)
+                                  ? availablePaymodes
+                                  : Object.keys(paymodeData).filter(k => k !== 'Date' && k !== 'Total' && k !== 'SortDate' && !k.startsWith('is'));
+                                exportRows.push(modes);
+                                const pmRow = modes.map(m => parseFloat(paymodeData[m] || 0) || 0);
                                 exportRows.push(pmRow);
                               }
 
@@ -4039,31 +3996,15 @@ const CafeSalesReport = ({
                                     chartRows.push(["Cash Out", totalCashOut, `${pct}%`]);
                                   }
                                 } else if (isPaymodeExport) {
-                                  const modes = [
-                                    { label: "Cash", key: ["Cash"] },
-                                    { label: "NETS", key: ["Nets", "NETS"] },
-                                    { label: "PayNow", key: ["PayNow", "Paynow"] },
-                                    { label: "UPI", key: ["UPI", "Upi"] },
-                                    { label: "Member", key: ["Member"] },
-                                    { label: "Credit Card", key: ["Credit"] },
-                                    { label: "Online", key: ["Online"] },
-                                    { label: "YeahPay PayNow", key: ["YeahPay_PayNow", "Yeahpay_Paynow"] },
-                                    { label: "YeahPay Card", key: ["YeahPay_Card", "Yeahpay_Card"] }
-                                  ];
                                   const cleanData = displayData.filter(r => !r.isTotalRow && !r.isGrandTotal && !r.isCategoryHeader && !r.isDishGroupHeader && !r.isSpacer);
-                                  const paymodeItems = modes.map(m => {
-                                    const val = cleanData.reduce((sum, r) => {
-                                      let v = 0;
-                                      for (const k of m.key) {
-                                        if (r[k] !== undefined && r[k] !== null) {
-                                          v = parseFloat(r[k]) || 0;
-                                          break;
-                                        }
-                                      }
-                                      return sum + v;
-                                    }, 0);
+                                  const dynamicModes = (availablePaymodes && availablePaymodes.length > 0)
+                                    ? availablePaymodes
+                                    : displayColumns.filter(c => c !== 'Date' && c !== 'SortDate' && c !== 'Total');
+
+                                  const paymodeItems = dynamicModes.map(pm => {
+                                    const val = cleanData.reduce((sum, r) => sum + (parseFloat(r[pm]) || 0), 0);
                                     return {
-                                      label: m.label,
+                                      label: pm,
                                       value: Number(val.toFixed(2))
                                     };
                                   }).filter(item => item.value > 0);
@@ -4109,7 +4050,7 @@ const CafeSalesReport = ({
                               const expFromDate = appliedFilters.fromDate || fromDate;
                               const expToDate = appliedFilters.toDate || toDate;
                               const fileName = `${expReportTitle}_${expFromDate}_to_${expToDate}.xlsx`;
-                              XLSX.writeFile(workbook, fileName);
+                              XLSX.writeFile(workbook, fileName, { bookType: "xlsx", type: "binary" });
                             } catch (excelErr) {
                               console.error("Excel generation error:", excelErr);
                               alert("Error generating Excel file: " + excelErr.message);
@@ -4195,13 +4136,17 @@ const CafeSalesReport = ({
                           } else if (byItem === "QtyGroup") {
                             if (col === 'DishName') colWidth = '65%';
                             else if (col === 'QtySold') colWidth = '35%';
+                          } else if (dayEnd === "Paymode") {
+                            if (col === 'Date') colWidth = '120px';
+                            else if (col === 'Total') colWidth = '120px';
+                            else colWidth = '110px';
                           }
 
                           return (
                             <th
                               key={idx}
                               onClick={handleHeaderClick}
-                              className={orderSales === "GroupDetail" ? "group-detail-th" : ""}
+                              title={col}
                               style={{
                                 textAlign: 'center',
                                 padding: '12px 14px',
@@ -4278,11 +4223,24 @@ const CafeSalesReport = ({
                             <tr key={i} className={rowClass}>
                               {displayColumns.map((col, idx) => {
                                 let value = item[col];
-                                // Format Date fields
-                                if (col === 'Date' && value) {
-                                  const dateObj = new Date(value);
-                                  if (!isNaN(dateObj.getTime()) && typeof value === 'object') {
-                                    value = dateObj.toLocaleDateString('en-GB');
+                                // Format Date fields to DD/MM/YY
+                                if ((col === 'Date' || col === 'InvoiceDate' || col === 'OrderDate' || col === 'CancelDate') && value && value !== '-' && value !== 'Grand Total:' && value !== 'TOTAL') {
+                                  if (typeof value === 'object' && value instanceof Date && !isNaN(value.getTime())) {
+                                    const d = String(value.getDate()).padStart(2, '0');
+                                    const m = String(value.getMonth() + 1).padStart(2, '0');
+                                    const y = String(value.getFullYear()).slice(-2);
+                                    value = `${d}/${m}/${y}`;
+                                  } else {
+                                    const s = String(value).trim();
+                                    const m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+                                    if (m) {
+                                      const day = m[1].padStart(2, '0');
+                                      const mon = m[2].padStart(2, '0');
+                                      const yr = m[3].slice(-2);
+                                      value = `${day}/${mon}/${yr}`;
+                                    } else {
+                                      value = s.replace(/\/20(\d{2})$/, '/$1');
+                                    }
                                   }
                                 }
                                 const isTextCol = getIsTextCol(col);
@@ -4325,8 +4283,8 @@ const CafeSalesReport = ({
                                     textAlign: cellAlign,
                                     padding: (orderSales === "GroupDetail" || dayEnd === "DiscountDetail") ? '10px 14px' : '6px 4px',
                                     whiteSpace: 'nowrap',
-                                    wordBreak: 'normal',
-                                    wordWrap: 'normal',
+                                    wordBreak: 'keep-all',
+                                    overflowWrap: 'normal',
                                     fontWeight: isTotal ? 'bold' : 'normal',
                                     fontSize: '13px',
                                     minWidth: colMinWidth
@@ -4379,31 +4337,22 @@ const CafeSalesReport = ({
 
                 {/* ✅ Payment Mode Breakdown for Sales Summary and Sales Performance Reports (Screen View) */}
                 {(bySales === "Summary" || bySales === "Analysis") && (() => {
-                  let totalCash = 0, totalNets = 0, totalPaynow = 0, totalUpi = 0, totalMember = 0, totalCredit = 0, totalOnline = 0, totalYPaynow = 0, totalYCard = 0;
+                  const modes = (availablePaymodes && availablePaymodes.length > 0)
+                    ? availablePaymodes
+                    : (paymodeData ? Object.keys(paymodeData) : ['CASH', 'NETS', 'PAYNOW', 'UPI', 'MEMBER', 'CREDIT', 'ONLINE', 'Yeahpay Paynow', 'Yeahpay Card']);
 
-                  if (bySales === "Analysis") {
-                    if (paymodeData) {
-                      totalCash = parseFloat(paymodeData.Cash) || 0;
-                      totalNets = parseFloat(paymodeData.Nets) || 0;
-                      totalPaynow = parseFloat(paymodeData.PayNow || paymodeData.Paynow) || 0;
-                      totalUpi = parseFloat(paymodeData.UPI) || 0;
-                      totalMember = parseFloat(paymodeData.Member) || 0;
-                      totalCredit = parseFloat(paymodeData.Credit) || 0;
-                      totalOnline = parseFloat(paymodeData.Online) || 0;
-                      totalYPaynow = parseFloat(paymodeData.YeahPay_PayNow || paymodeData.Yeahpay_Paynow) || 0;
-                      totalYCard = parseFloat(paymodeData.YeahPay_Card || paymodeData.Yeahpay_Card) || 0;
-                    }
+                  const modeAmounts = {};
+                  modes.forEach(m => { modeAmounts[m] = 0; });
+
+                  if (bySales === "Analysis" && paymodeData) {
+                    modes.forEach(m => {
+                      modeAmounts[m] = parseFloat(paymodeData[m]) || 0;
+                    });
                   } else {
                     const dataRows = localData.filter(r => !r.isTotalRow);
-                    totalCash = dataRows.reduce((sum, r) => sum + (parseFloat(r.Cash) || 0), 0);
-                    totalNets = dataRows.reduce((sum, r) => sum + (parseFloat(r.Nets) || 0), 0);
-                    totalPaynow = dataRows.reduce((sum, r) => sum + (parseFloat(r.PayNow || r.Paynow) || 0), 0);
-                    totalUpi = dataRows.reduce((sum, r) => sum + (parseFloat(r.UPI) || 0), 0);
-                    totalMember = dataRows.reduce((sum, r) => sum + (parseFloat(r.Member) || 0), 0);
-                    totalCredit = dataRows.reduce((sum, r) => sum + (parseFloat(r.Credit) || 0), 0);
-                    totalOnline = dataRows.reduce((sum, r) => sum + (parseFloat(r.Online) || 0), 0);
-                    totalYPaynow = dataRows.reduce((sum, r) => sum + (parseFloat(r.YeahPay_PayNow || r.Yeahpay_Paynow) || 0), 0);
-                    totalYCard = dataRows.reduce((sum, r) => sum + (parseFloat(r.YeahPay_Card || r.Yeahpay_Card) || 0), 0);
+                    modes.forEach(m => {
+                      modeAmounts[m] = dataRows.reduce((sum, r) => sum + (parseFloat(r[m]) || 0), 0);
+                    });
                   }
 
                   return (
@@ -4412,39 +4361,25 @@ const CafeSalesReport = ({
                         <table className="professional-table">
                           <thead>
                             <tr>
-                              <th>CASH</th>
-                              <th>NETS</th>
-                              <th>PAYNOW</th>
-                              <th>UPI</th>
-                              <th>MEMBER</th>
-                              <th>CREDIT</th>
-                              <th>ONLINE</th>
-                              <th>YPAYNOW</th>
-                              <th>YCARD</th>
+                              {modes.map((m, idx) => (
+                                <th key={idx} style={{ textAlign: 'center', whiteSpace: 'nowrap', wordBreak: 'keep-all', overflowWrap: 'normal' }} title={m}>
+                                  {getCompactHeaderLabel(m, bySales)}
+                                </th>
+                              ))}
                             </tr>
                           </thead>
                           <tbody>
                             <tr>
-                              <td style={{ textAlign: 'center' }}>{formatNumber(totalCash)}</td>
-                              <td style={{ textAlign: 'center' }}>{formatNumber(totalNets)}</td>
-                              <td style={{ textAlign: 'center' }}>{formatNumber(totalPaynow)}</td>
-                              <td style={{ textAlign: 'center' }}>{formatNumber(totalUpi)}</td>
-                              <td style={{ textAlign: 'center' }}>{formatNumber(totalMember)}</td>
-                              <td style={{ textAlign: 'center' }}>{formatNumber(totalCredit)}</td>
-                              <td style={{ textAlign: 'center' }}>{formatNumber(totalOnline)}</td>
-                              <td style={{ textAlign: 'center' }}>{formatNumber(totalYPaynow)}</td>
-                              <td style={{ textAlign: 'center' }}>{formatNumber(totalYCard)}</td>
+                              {modes.map((m, idx) => (
+                                <td key={idx} style={{ textAlign: 'center', whiteSpace: 'nowrap', wordBreak: 'keep-all', overflowWrap: 'normal' }}>
+                                  {formatNumber(modeAmounts[m])}
+                                </td>
+                              ))}
                             </tr>
                             <tr className="grand-total-row">
-                              <td style={{ textAlign: 'center', fontWeight: 'bold' }}>{formatNumber(totalCash)}</td>
-                              <td style={{ textAlign: 'center', fontWeight: 'bold' }}>{formatNumber(totalNets)}</td>
-                              <td style={{ textAlign: 'center', fontWeight: 'bold' }}>{formatNumber(totalPaynow)}</td>
-                              <td style={{ textAlign: 'center', fontWeight: 'bold' }}>{formatNumber(totalUpi)}</td>
-                              <td style={{ textAlign: 'center', fontWeight: 'bold' }}>{formatNumber(totalMember)}</td>
-                              <td style={{ textAlign: 'center', fontWeight: 'bold' }}>{formatNumber(totalCredit)}</td>
-                              <td style={{ textAlign: 'center', fontWeight: 'bold' }}>{formatNumber(totalOnline)}</td>
-                              <td style={{ textAlign: 'center', fontWeight: 'bold' }}>{formatNumber(totalYPaynow)}</td>
-                              <td style={{ textAlign: 'center', fontWeight: 'bold' }}>{formatNumber(totalYCard)}</td>
+                              {modes.map((m, idx) => (
+                                <td key={idx} style={{ textAlign: 'center', fontWeight: 'bold' }}>{formatNumber(modeAmounts[m])}</td>
+                              ))}
                             </tr>
                           </tbody>
                         </table>

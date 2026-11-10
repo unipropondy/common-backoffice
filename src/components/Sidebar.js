@@ -191,11 +191,6 @@ function Sidebar({ open, setOpen }) {
               <FaMoneyBill className="sid-icon" /> Settlement
             </NavLink>
 
-
-            <NavLink className={({ isActive }) => `sid-menu ${isActive ? 'active' : ''}`} to="/UserSalesReport">
-              <FaChartBar className="sid-icon" /> User Sales Report
-            </NavLink>
-
             <NavLink className={({ isActive }) => `sid-menu ${isActive ? 'active' : ''}`} to="/SalesReport">
               <FaChartBar className="sid-icon" /> Sales Report
             </NavLink>
