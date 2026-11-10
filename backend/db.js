@@ -38,10 +38,14 @@ const getPool = async (dbname) => {
   }
 };
 
-// MASTER DATABASE POOL
-const masterPoolPromise = getPool(
-  process.env.MASTER_DB_NAME || "UNIPRO"
-);
+// MASTER DATABASE POOL (lazy-loaded so an unreachable master DB does not crash the server on startup)
+let masterPoolPromise = null;
+const getMasterPool = () => {
+  if (!masterPoolPromise) {
+    masterPoolPromise = getPool(process.env.MASTER_DB_NAME || "UNIPRO");
+  }
+  return masterPoolPromise;
+};
 
 const getDatabaseByBranchCode = async (branchCode) => {
 
@@ -49,7 +53,7 @@ const getDatabaseByBranchCode = async (branchCode) => {
     throw new Error("Branch Code is required");
   }
 
-  const masterPool = await masterPoolPromise;
+  const masterPool = await getMasterPool();
 
   const result = await masterPool
     .request()

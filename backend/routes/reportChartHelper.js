@@ -2,9 +2,10 @@
  * Helper to generate shared chart specification for backend report exports (PDF / Excel)
  */
 
-function getSharedReportChartSpec(cleanRows = [], reportKey = "", reportTitle = "", fromDate = "") {
+function getSharedReportChartSpec(cleanRows = [], reportKey = "", reportTitle = "", fromDate = "", availablePaymodes = []) {
   const isTransaction = reportKey === "Transaction";
   const isPaymode = reportKey === "Paymode";
+  const isAnalysis = reportKey === "Analysis";
   const isHourly = reportKey === "Hourly";
   const isQtyBased =
     reportKey === "Qty" ||
@@ -40,70 +41,52 @@ function getSharedReportChartSpec(cleanRows = [], reportKey = "", reportTitle = 
     };
   }
 
+  // ✅ Dynamic Paymode Collection Report
   if (isPaymode) {
-    const modes = [
-      { label: "Cash", keys: ["Cash", "cash"] },
-      { label: "NETS", keys: ["Nets", "NETS", "nets"] },
-      { label: "PayNow", keys: ["PayNow", "Paynow", "paynow"] },
-      { label: "UPI", keys: ["UPI", "Upi", "upi"] },
-      { label: "Member", keys: ["Member", "member"] },
-      { label: "Credit Card", keys: ["Credit", "credit", "CreditCard"] },
-      { label: "Online", keys: ["Online", "online"] },
-      {
-        label: "YeahPay PayNow",
-        keys: ["YeahPay_PayNow", "Yeahpay_Paynow", "YeahPayPayNow"],
-      },
-      {
-        label: "YeahPay Card",
-        keys: ["YeahPay_Card", "Yeahpay_Card", "YeahPayCard"],
-      },
-    ];
+    const paymodeCols = (availablePaymodes && availablePaymodes.length > 0)
+      ? availablePaymodes
+      : Object.keys(cleanRows[0] || {}).filter(k => k !== 'Date' && k !== 'Total' && k !== 'SortDate' && !k.startsWith('is'));
 
-    const hasPaymentModeCol = cleanRows.some(
-      (r) => r.PaymentMode || r.Paymentmode || r.Paymode
-    );
-
-    let items = [];
-    if (hasPaymentModeCol) {
-      const modeMap = {};
-      cleanRows.forEach((r) => {
-        const mode = r.PaymentMode || r.Paymentmode || r.Paymode || "Other";
-        const amt =
-          parseFloat(r.Amount || r.TotalAmount || r.NetSales || r.Total || 0) || 0;
-        modeMap[mode] = (modeMap[mode] || 0) + amt;
-      });
-      items = Object.keys(modeMap)
-        .map((label) => ({
-          label,
-          value: Number(modeMap[label].toFixed(2)),
-        }))
-        .filter((it) => it.value > 0);
-    } else {
-      items = modes
-        .map((m) => {
-          const val = cleanRows.reduce((sum, r) => {
-            let v = 0;
-            for (const k of m.keys) {
-              if (r[k] !== undefined && r[k] !== null) {
-                v = parseFloat(r[k]) || 0;
-                break;
-              }
-            }
-            return sum + v;
-          }, 0);
-          return {
-            label: m.label,
-            value: Number(val.toFixed(2)),
-          };
-        })
-        .filter((it) => it.value > 0);
-    }
+    const items = paymodeCols.map(pm => {
+      const val = cleanRows.reduce((sum, r) => sum + (parseFloat(r[pm]) || 0), 0);
+      return {
+        label: pm,
+        value: Number(val.toFixed(2)),
+      };
+    }).filter(it => it.value > 0);
 
     return {
       defaultType: "donut",
       chartHeading: reportTitle || "Payment Collection Breakdown",
       items,
+      paymodeCols,
     };
+  }
+
+  // ✅ Dynamic Sales Performance Report (Analysis) Paymode Breakdown
+  if (isAnalysis) {
+    const paymodeCols = (availablePaymodes && availablePaymodes.length > 0)
+      ? availablePaymodes
+      : Object.keys(cleanRows[0] || {}).filter(k => k !== 'Date' && k !== 'CategoryName' && k !== 'Bills' && k !== 'Pax' && k !== 'Sub Total' && k !== 'Discount' && k !== 'SVC' && k !== 'GST' && k !== 'Net Total' && k !== 'Avg/Bill' && k !== 'Avg/Pax' && k !== 'Total' && k !== 'SortDate' && !k.startsWith('is'));
+
+    if (paymodeCols.length > 0) {
+      const items = paymodeCols.map(pm => {
+        const val = cleanRows.reduce((sum, r) => sum + (parseFloat(r[pm]) || 0), 0);
+        return {
+          label: pm,
+          value: Number(val.toFixed(2)),
+        };
+      }).filter(it => it.value > 0);
+
+      if (items.length > 0) {
+        return {
+          defaultType: "donut",
+          chartHeading: `${reportTitle || "Sales Performance"} - Payment Breakdown`,
+          items,
+          paymodeCols,
+        };
+      }
+    }
   }
 
   // Hourly Report

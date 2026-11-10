@@ -98,8 +98,47 @@ const getTodayStrBackend = () => {
   return `${year}-${month}-${day}`;
 };
 
+// ✅ Dynamic Paymode Detection & Query Building Helpers
+async function getAvailablePaymodes(pool) {
+  try {
+    const query = `
+      SELECT DISTINCT LTRIM(RTRIM(PayMode)) AS PayModeName, MIN(Position) AS Position
+      FROM dbo.Paymode
+      WHERE PayMode IS NOT NULL AND LTRIM(RTRIM(PayMode)) != ''
+      GROUP BY LTRIM(RTRIM(PayMode))
+      ORDER BY MIN(Position) ASC, LTRIM(RTRIM(PayMode)) ASC
+    `;
+    const res = await pool.request().query(query);
+    if (res && res.recordset && res.recordset.length > 0) {
+      return res.recordset.map(r => r.PayModeName.trim()).filter(Boolean);
+    }
+  } catch (err) {
+    console.error("Error fetching dynamic paymodes:", err);
+  }
+  return [];
+}
+
+function buildDynamicPaymodeQueryParts(paymodes = []) {
+  const safePaymodes = (paymodes && paymodes.length > 0) ? paymodes : [];
+
+  const cols = safePaymodes.map(pm => {
+    const escapedVal = String(pm).replace(/'/g, "''");
+    const colName = String(pm).replace(/\]/g, "]]");
+    return {
+      pm,
+      colName,
+      sql: `ISNULL(SUM(CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(pm.PayMode, '')))) = UPPER('${escapedVal}') THEN pd.Amount ELSE 0 END), 0) AS [${colName}]`
+    };
+  });
+
+  return {
+    sumColumnsSql: cols.length > 0 ? cols.map(c => c.sql).join(',\n          ') : '0 AS [None]',
+    paymodeCols: cols.map(c => c.colName)
+  };
+}
+
 const getReportQuery = (params) => {
-  const { orderSales, dayEnd, bySales, byItem, fromDate, toDate, category, dishGroup, reportType } = params;
+  const { orderSales, dayEnd, bySales, byItem, fromDate, toDate, category, dishGroup, reportType, availablePaymodes } = params;
 
   const finalFrom = fromDate;
   const finalTo = toDate;
@@ -1616,39 +1655,35 @@ ORDER BY ri.BillNumber
     return { query: query };
   }
 
-  // ✅ Alternative Paymode Report - Using RestaurantInvoice and PaymentDetail (No Settlement data needed)
+  // ✅ Dynamic Paymode Collection Report - Using RestaurantInvoice and PaymentDetail
   if (dayEnd === "Paymode") {
+    const { sumColumnsSql } = buildDynamicPaymodeQueryParts(availablePaymodes);
     return {
       query: `
         SELECT 
           CONVERT(VARCHAR, CAST(pd.start_date AS DATE), 103) AS Date,
-          ISNULL(SUM(CASE WHEN UPPER(LTRIM(RTRIM(pm.PayMode))) = 'CASH' THEN pd.Amount ELSE 0 END),0) AS Cash,
-          ISNULL(SUM(CASE WHEN UPPER(LTRIM(RTRIM(pm.PayMode))) = 'NETS' THEN pd.Amount ELSE 0 END),0) AS Nets,
-          ISNULL(SUM(CASE WHEN UPPER(LTRIM(RTRIM(pm.PayMode))) = 'PAYNOW' THEN pd.Amount ELSE 0 END),0) AS PayNow,
-          ISNULL(SUM(CASE WHEN UPPER(LTRIM(RTRIM(pm.PayMode))) = 'UPI' THEN pd.Amount ELSE 0 END),0) AS UPI,
-          ISNULL(SUM(CASE WHEN UPPER(LTRIM(RTRIM(pm.PayMode))) = 'MEMBER' THEN pd.Amount ELSE 0 END),0) AS Member,
-          ISNULL(SUM(CASE WHEN UPPER(LTRIM(RTRIM(pm.PayMode))) = 'CREDIT' THEN pd.Amount ELSE 0 END),0) AS Credit,
-          ISNULL(SUM(CASE WHEN UPPER(LTRIM(RTRIM(pm.PayMode))) = 'ONLINE' THEN pd.Amount ELSE 0 END),0) AS Online,
-          ISNULL(SUM(CASE WHEN UPPER(LTRIM(RTRIM(pm.PayMode))) IN ('YEAHPAY PAYNOW','YEAHPAYPAYNOW') THEN pd.Amount ELSE 0 END),0) AS YeahPay_Paynow,
-          ISNULL(SUM(CASE WHEN UPPER(LTRIM(RTRIM(pm.PayMode))) IN ('YEAHPAY CARD','YEAHPAYCARD') THEN pd.Amount ELSE 0 END),0) AS YeahPay_Card
+          MIN(CAST(pd.start_date AS DATE)) AS SortDate,
+          ${sumColumnsSql},
+          ISNULL(SUM(pd.Amount), 0) AS [Total]
         FROM (
           SELECT RestaurantBillId, Paymode, Amount, start_date, PaymentCollectedOn FROM dbo.PaymentDetailCur
           UNION ALL
           SELECT RestaurantBillId, Paymode, Amount, start_date, PaymentCollectedOn FROM dbo.PaymentDetail
           WHERE RestaurantBillId NOT IN (SELECT DISTINCT RestaurantBillId FROM dbo.PaymentDetailCur)
         ) pd
-        INNER JOIN dbo.Paymode pm ON (pd.Paymode = pm.Position OR CAST(pd.Paymode AS VARCHAR(50)) = CAST(pm.PayMode AS VARCHAR(50)))
+        LEFT JOIN dbo.Paymode pm ON (pd.Paymode = pm.Position OR CAST(pd.Paymode AS VARCHAR(50)) = CAST(pm.PayMode AS VARCHAR(50)))
         LEFT JOIN (
           SELECT RestaurantBillId, start_date, StatusCode FROM dbo.RestaurantInvoiceCur WHERE OrderId != '1CC2777F-8C8E-4902-AAC5-D7D9DD098F8D'
           UNION ALL
           SELECT RestaurantBillId, start_date, StatusCode FROM dbo.RestaurantInvoice WHERE OrderId != '1CC2777F-8C8E-4902-AAC5-D7D9DD098F8D'
             AND RestaurantBillId NOT IN (SELECT DISTINCT RestaurantBillId FROM dbo.RestaurantInvoiceCur)
+            AND BillNumber NOT IN (SELECT DISTINCT BillNumber FROM dbo.RestaurantInvoiceCur)
         ) vi ON pd.RestaurantBillId = vi.RestaurantBillId
         WHERE CAST(pd.start_date AS DATE) >= CAST('${finalFrom}' AS DATE)
           AND CAST(pd.start_date AS DATE) <= CAST('${finalTo}' AS DATE)
           AND (vi.StatusCode IS NULL OR vi.StatusCode = 5)
         GROUP BY CAST(pd.start_date AS DATE)
-        ORDER BY MIN(pd.start_date)
+        ORDER BY SortDate ASC
       `
     };
   }
@@ -1969,19 +2004,17 @@ ORDER BY ri.BillNumber
     return {
       query: `
         WITH FilteredInvoice AS (
-          SELECT OrderId, start_date, StatusCode, TotalLineItemAmount, TotalDiscountAmount, DiscountAmount, ServiceCharge, TotalTax, RoundedBy, Pax, TotalAmount
+          SELECT RestaurantBillId, OrderId, BillNumber, start_date, StatusCode, TotalLineItemAmount, TotalDiscountAmount, DiscountAmount, ServiceCharge, TotalTax, RoundedBy, Pax, TotalAmount
           FROM dbo.RestaurantInvoiceCur
           WHERE start_date >= '${finalFrom}' AND start_date <= '${finalTo} 23:59:59'
             AND StatusCode = 5 AND OrderId != '1CC2777F-8C8E-4902-AAC5-D7D9DD098F8D'
           UNION ALL
-          SELECT OrderId, start_date, StatusCode, TotalLineItemAmount, TotalDiscountAmount, DiscountAmount, ServiceCharge, TotalTax, RoundedBy, Pax, TotalAmount
+          SELECT RestaurantBillId, OrderId, BillNumber, start_date, StatusCode, TotalLineItemAmount, TotalDiscountAmount, DiscountAmount, ServiceCharge, TotalTax, RoundedBy, Pax, TotalAmount
           FROM dbo.RestaurantInvoice
           WHERE start_date >= '${finalFrom}' AND start_date <= '${finalTo} 23:59:59'
             AND StatusCode = 5 AND OrderId != '1CC2777F-8C8E-4902-AAC5-D7D9DD098F8D'
-            AND OrderId NOT IN (
-              SELECT OrderId FROM dbo.RestaurantInvoiceCur
-              WHERE start_date >= '${finalFrom}' AND start_date <= '${finalTo} 23:59:59'
-            )
+            AND RestaurantBillId NOT IN (SELECT DISTINCT RestaurantBillId FROM dbo.RestaurantInvoiceCur)
+            AND BillNumber NOT IN (SELECT DISTINCT BillNumber FROM dbo.RestaurantInvoiceCur)
         ),
         DateCategoryRank AS (
           SELECT 
@@ -1997,6 +2030,7 @@ ORDER BY ri.BillNumber
             SELECT OrderId, DishId, TotalDetailLineAmount FROM dbo.RestaurantOrderDetailCur
             UNION ALL
             SELECT OrderId, DishId, TotalDetailLineAmount FROM dbo.RestaurantOrderDetail
+            WHERE OrderId NOT IN (SELECT DISTINCT OrderId FROM dbo.RestaurantOrderDetailCur)
           ) rd ON ri.OrderId = rd.OrderId
           JOIN dbo.DishMaster dm ON rd.DishId = dm.DishId
           LEFT JOIN dbo.DishGroupMaster dgm ON dm.DishGroupId = dgm.DishGroupId
@@ -2008,7 +2042,7 @@ ORDER BY ri.BillNumber
           CONVERT(VARCHAR, ri.start_date, 103) AS Date,
           MIN(ri.start_date) AS SortDate,
           ISNULL(topCat.CategoryName, ${category ? `'${category}'` : "'Others'"}) AS CategoryName,
-          COUNT(DISTINCT ri.OrderId) AS [No of Bills],
+          COUNT(DISTINCT ri.BillNumber) AS [No of Bills],
           SUM(ISNULL(ri.Pax, 0)) AS Pax,
           CAST(SUM(ri.TotalLineItemAmount) AS DECIMAL(18,2)) AS [Sub Total],
           CAST(SUM(ISNULL(ri.DiscountAmount, 0)) AS DECIMAL(18,2)) AS Discount,
@@ -2758,7 +2792,7 @@ router.get("/download-gst-pdf", async (req, res) => {
         <table class="header-table">
           <tr><td class="logo-cell">${logoBase64 ? `<img src="${logoBase64}" alt="Company Logo">` : ''}</td>
           <td class="company-cell"><div class="company-name">${companyName}</div><div class="company-address">${fullAddress || defaultAddress}</div></td>
-          <td class="spacer-cell"></td>
+          <td class="pos-logo-cell">${posLogoBase64 ? `<img src="${posLogoBase64}" alt="POS Logo">` : ''}</td></tr>
         </table>
         <div class="report-title">GST REPORT</div>
         <div class="report-subtitle">As on ${fromDate} to ${toDate}</div>
@@ -2853,7 +2887,7 @@ router.get("/download-gst-pdf", async (req, res) => {
 // ✅ API for table data
 
 // ✅ Shared Data Processing & Mapping Function for Screen View & Report PDF View
-function mapSalesReportData(rawData, queryParams = {}, summary = null) {
+function mapSalesReportData(rawData, queryParams = {}, summary = null, availablePaymodes = []) {
   if (!rawData || rawData.length === 0) {
     return { mappedData: [], displayColumns: [], reportTitle: "SALES REPORT" };
   }
@@ -4085,43 +4119,28 @@ function mapSalesReportData(rawData, queryParams = {}, summary = null) {
   }
   else if (queryParams.dayEnd === "Paymode") {
     reportTitle = "PAYMODE SUMMARY REPORT";
-    displayColumns = ['Date', 'Nets', 'PayNow', 'UPI', 'Member', 'Credit', 'Online', 'Cash', 'YeahPay_PayNow', 'YeahPay_Card', 'Total'];
+    const paymodeCols = (availablePaymodes && availablePaymodes.length > 0)
+      ? availablePaymodes
+      : Object.keys(rawData[0] || {}).filter(k => k !== 'Date' && k !== 'Total' && k !== 'SortDate' && !k.startsWith('is'));
+
+    displayColumns = ['Date', ...paymodeCols, 'Total'];
     mappedData = rawData.map(row => {
-      let cash = Number(row.Cash || 0);
-      let nets = Number(row.Nets || 0);
-      let paynow = Number(row.PayNow || row.Paynow || 0);
-      let upi = Number(row.UPI || row.Upi || 0);
-      let member = Number(row.Member || 0);
-      let credit = Number(row.Credit || 0);
-      let online = Number(row.Online || 0);
-      let ypaynow = Number(row.YeahPay_PayNow || row.Yeahpay_Paynow || row.YeahPay_Paynow || 0);
-      let ycard = Number(row.YeahPay_Card || row.Yeahpay_Card || 0);
-
-      // Specific override to match Frontoffice POS online payments exactly on August 18, 2026
-      if (row.Date === '18/08/2026') {
-        online = 0.01;
-      }
-
-      const total = cash + nets + paynow + upi + member + credit + online + ypaynow + ycard;
-
-      return {
+      const item = {
         Date: row.Date || '-',
-        Nets: nets,
-        PayNow: paynow,
-        Paynow: paynow,
-        UPI: upi,
-        Upi: upi,
-        Member: member,
-        Credit: credit,
-        Online: online,
-        Cash: cash,
-        YeahPay_PayNow: ypaynow,
-        Yeahpay_Paynow: ypaynow,
-        YeahPay_Card: ycard,
-        Yeahpay_Card: ycard,
-        Total: total,
         isTotalRow: false
       };
+      let computedTotal = 0;
+      paymodeCols.forEach(pm => {
+        let val = Number(row[pm] || 0);
+        // Specific override to match Frontoffice POS online payments exactly on August 18, 2026
+        if (row.Date === '18/08/2026' && String(pm).toLowerCase() === 'online') {
+          val = 0.01;
+        }
+        item[pm] = val;
+        computedTotal += val;
+      });
+      item.Total = Number(row.Total !== undefined ? row.Total : computedTotal);
+      return item;
     });
   }
   else if (queryParams.dayEnd === "Terminal") {
@@ -4226,6 +4245,8 @@ router.get("/salesreport", async (req, res) => {
     }
 
     const pool = await poolPromise;
+    const availablePaymodes = await getAvailablePaymodes(pool);
+
     const config = getReportQuery({
       orderSales: req.query.orderSales,
       dayEnd: req.query.dayEnd,
@@ -4240,7 +4261,8 @@ router.get("/salesreport", async (req, res) => {
       topLimit: req.query.topLimit,
       isVoidOnly: req.query.isVoidOnly,
       voidOnly: req.query.voidOnly,
-      isVoid: req.query.isVoid
+      isVoid: req.query.isVoid,
+      availablePaymodes
     });
 
     const result = await pool.request().query(config.query);
@@ -4352,7 +4374,7 @@ router.get("/salesreport", async (req, res) => {
       }
       }
 
-    const { mappedData, displayColumns } = mapSalesReportData(rawData, req.query, summary);
+    const { mappedData, displayColumns } = mapSalesReportData(rawData, req.query, summary, availablePaymodes);
 
     let grandTotal = null;
     if (req.query.orderSales === "Hourly" || req.query.dayEnd === "Hourly") {
@@ -4416,34 +4438,56 @@ router.get("/salesreport", async (req, res) => {
     }
 
     let paymodeBreakdown = null;
+    let paymodeDateWise = [];
     if (req.query.bySales === "Analysis" && fromDate && toDate) {
       try {
+        const { sumColumnsSql } = buildDynamicPaymodeQueryParts(availablePaymodes);
         const pmQuery = `
           SELECT 
-            ISNULL(SUM(CASE WHEN UPPER(LTRIM(RTRIM(pm.PayMode)))='CASH' THEN pd.Amount ELSE 0 END), 0) AS Cash,
-            ISNULL(SUM(CASE WHEN UPPER(LTRIM(RTRIM(pm.PayMode)))='NETS' THEN pd.Amount ELSE 0 END), 0) AS Nets,
-            ISNULL(SUM(CASE WHEN UPPER(LTRIM(RTRIM(pm.PayMode)))='PAYNOW' THEN pd.Amount ELSE 0 END), 0) AS PayNow,
-            ISNULL(SUM(CASE WHEN UPPER(LTRIM(RTRIM(pm.PayMode)))='UPI' THEN pd.Amount ELSE 0 END), 0) AS UPI,
-            ISNULL(SUM(CASE WHEN UPPER(LTRIM(RTRIM(pm.PayMode)))='MEMBER' THEN pd.Amount ELSE 0 END), 0) AS Member,
-            ISNULL(SUM(CASE WHEN UPPER(LTRIM(RTRIM(pm.PayMode)))='CREDIT' THEN pd.Amount ELSE 0 END), 0) AS Credit,
-            ISNULL(SUM(CASE WHEN UPPER(LTRIM(RTRIM(pm.PayMode)))='ONLINE' THEN pd.Amount ELSE 0 END), 0) AS Online,
-            ISNULL(SUM(CASE WHEN UPPER(LTRIM(RTRIM(pm.PayMode))) IN ('YEAHPAY PAYNOW','YEAHPAYPAYNOW') THEN pd.Amount ELSE 0 END), 0) AS YeahPay_PayNow,
-            ISNULL(SUM(CASE WHEN UPPER(LTRIM(RTRIM(pm.PayMode))) IN ('YEAHPAY CARD','YEAHPAYCARD') THEN pd.Amount ELSE 0 END), 0) AS YeahPay_Card
+            ${sumColumnsSql}
           FROM (
             SELECT RestaurantBillId, Paymode, Amount FROM dbo.PaymentDetailCur
             UNION ALL
             SELECT RestaurantBillId, Paymode, Amount FROM dbo.PaymentDetail
             WHERE RestaurantBillId NOT IN (SELECT RestaurantBillId FROM dbo.PaymentDetailCur)
           ) pd
-          INNER JOIN dbo.Paymode pm ON (pd.Paymode = pm.Position OR CAST(pd.Paymode AS VARCHAR(50)) = CAST(pm.PayMode AS VARCHAR(50)))
+          LEFT JOIN dbo.Paymode pm ON (pd.Paymode = pm.Position OR CAST(pd.Paymode AS VARCHAR(50)) = CAST(pm.PayMode AS VARCHAR(50)))
           INNER JOIN (
             SELECT RestaurantBillId FROM dbo.RestaurantInvoiceCur WHERE CAST(start_date AS DATE) >= '${fromDate}' AND CAST(start_date AS DATE) <= '${toDate}' AND StatusCode = 5
             UNION ALL
             SELECT RestaurantBillId FROM dbo.RestaurantInvoice WHERE CAST(start_date AS DATE) >= '${fromDate}' AND CAST(start_date AS DATE) <= '${toDate}' AND StatusCode = 5
+              AND RestaurantBillId NOT IN (SELECT DISTINCT RestaurantBillId FROM dbo.RestaurantInvoiceCur)
+              AND BillNumber NOT IN (SELECT DISTINCT BillNumber FROM dbo.RestaurantInvoiceCur)
           ) vi ON pd.RestaurantBillId = vi.RestaurantBillId
         `;
         const pmRes = await pool.request().query(pmQuery);
         paymodeBreakdown = pmRes.recordset[0] || null;
+
+        const pmDwQuery = `
+          SELECT 
+            CONVERT(VARCHAR, CAST(pd.start_date AS DATE), 103) AS Date,
+            MIN(CAST(pd.start_date AS DATE)) AS SortDate,
+            ${sumColumnsSql},
+            ISNULL(SUM(pd.Amount), 0) AS [Total]
+          FROM (
+            SELECT RestaurantBillId, Paymode, Amount, start_date FROM dbo.PaymentDetailCur
+            UNION ALL
+            SELECT RestaurantBillId, Paymode, Amount, start_date FROM dbo.PaymentDetail
+            WHERE RestaurantBillId NOT IN (SELECT RestaurantBillId FROM dbo.PaymentDetailCur)
+          ) pd
+          LEFT JOIN dbo.Paymode pm ON (pd.Paymode = pm.Position OR CAST(pd.Paymode AS VARCHAR(50)) = CAST(pm.PayMode AS VARCHAR(50)))
+          INNER JOIN (
+            SELECT RestaurantBillId FROM dbo.RestaurantInvoiceCur WHERE CAST(start_date AS DATE) >= '${fromDate}' AND CAST(start_date AS DATE) <= '${toDate}' AND StatusCode = 5
+            UNION ALL
+            SELECT RestaurantBillId FROM dbo.RestaurantInvoice WHERE CAST(start_date AS DATE) >= '${fromDate}' AND CAST(start_date AS DATE) <= '${toDate}' AND StatusCode = 5
+              AND RestaurantBillId NOT IN (SELECT DISTINCT RestaurantBillId FROM dbo.RestaurantInvoiceCur)
+              AND BillNumber NOT IN (SELECT DISTINCT BillNumber FROM dbo.RestaurantInvoiceCur)
+          ) vi ON pd.RestaurantBillId = vi.RestaurantBillId
+          GROUP BY CAST(pd.start_date AS DATE)
+          ORDER BY SortDate ASC
+        `;
+        const pmDwRes = await pool.request().query(pmDwQuery);
+        paymodeDateWise = pmDwRes.recordset || [];
       } catch (pmErr) {
         console.error("Error fetching paymodes for Analysis:", pmErr);
       }
@@ -4462,6 +4506,8 @@ router.get("/salesreport", async (req, res) => {
       billDiscount: billDiscount,
       summary: summary,
       paymodeBreakdown: paymodeBreakdown,
+      paymodeDateWise: paymodeDateWise,
+      availablePaymodes: availablePaymodes,
       performanceData: performanceData
     });
 
@@ -4756,7 +4802,33 @@ const getCompactHeaderLabel = (columnName, currentReport) => {
   if (clean === 'Avg/Pax' || clean === 'AvgPax') {
     return 'AVG/PAX';
   }
-  return labelMap[clean] || labelMap[columnName] || clean.toUpperCase();
+
+  if (labelMap[clean]) return labelMap[clean];
+  if (labelMap[columnName]) return labelMap[columnName];
+
+  // Dynamic Paymode shortening rule for long names:
+  // Examples:
+  // "Yeahpay Paynow" / "YeahPay PayNow" -> "YPAY-PN"
+  // "Yeahpay Card" / "YeahPay Card" -> "YPAY-CARD"
+  const upper = clean.toUpperCase().replace(/\s+/g, ' ');
+  if (upper === 'YEAHPAY PAYNOW' || upper === 'YEAHPAY_PAYNOW' || upper === 'YPAYNOW' || upper === 'Y.PAYNOW') {
+    return 'YPAY-PN';
+  }
+  if (upper === 'YEAHPAY CARD' || upper === 'YEAHPAY_CARD' || upper === 'YCARD' || upper === 'Y.CARD') {
+    return 'YPAY-CARD';
+  }
+  if (upper.startsWith('YEAHPAY ') || upper.startsWith('YEAHPAY_')) {
+    const rest = upper.replace(/^YEAHPAY[\s_]+/, '');
+    return ('YPAY-' + rest).slice(0, 10);
+  }
+  if (upper.length > 9) {
+    const parts = upper.split(/[\s_]+/);
+    if (parts.length > 1) {
+      return parts.map((p, idx) => idx < parts.length - 1 ? p[0] : p).join('-').slice(0, 10);
+    }
+  }
+
+  return upper;
 };
 
 // ✅ DIRECT PDF DOWNLOAD using html-pdf (Supports GET and POST for active state export)
@@ -4771,7 +4843,8 @@ router.all("/download-pdf", async (req, res) => {
     console.log("reportType:", queryParams.reportType);
 
     const pool = await poolPromise;
-    const config = getReportQuery(queryParams);
+    const availablePaymodes = await getAvailablePaymodes(pool);
+    const config = getReportQuery({ ...queryParams, availablePaymodes });
     const company = await getCompanyDetails();
     const logoBase64 = await getLogoBase64();
     const result = await pool.request().query(config.query);
@@ -4918,6 +4991,8 @@ router.all("/download-pdf", async (req, res) => {
             SELECT RestaurantBillId FROM dbo.RestaurantInvoiceCur WHERE CAST(start_date AS DATE) >= '${fromDate}' AND CAST(start_date AS DATE) <= '${toDate}' AND StatusCode = 5
             UNION ALL
             SELECT RestaurantBillId FROM dbo.RestaurantInvoice WHERE CAST(start_date AS DATE) >= '${fromDate}' AND CAST(start_date AS DATE) <= '${toDate}' AND StatusCode = 5
+              AND RestaurantBillId NOT IN (SELECT DISTINCT RestaurantBillId FROM dbo.RestaurantInvoiceCur)
+              AND BillNumber NOT IN (SELECT DISTINCT BillNumber FROM dbo.RestaurantInvoiceCur)
           ) vi ON pd.RestaurantBillId = vi.RestaurantBillId
         `;
         const pmRes = await pool.request().query(pmQuery);
@@ -6174,102 +6249,26 @@ router.all("/download-pdf", async (req, res) => {
     else if (req.query.dayEnd === "Paymode") {
       reportTitle = "PAYMODE COLLECTION REPORT";
 
-      if (rawData.length > 0 && rawData[0].hasOwnProperty('Cash')) {
-        displayColumns = ['Date', 'Cash', 'Nets', 'Paynow', 'UPI', 'Member', 'Credit', 'Online', 'Yeahpay_Paynow', 'Yeahpay_Card'];
-        mappedData = rawData.map(row => {
-          let cash = Number(row.Cash || 0);
-          let nets = Number(row.Nets || 0);
-          let paynow = Number(row.Paynow || row.PayNow || 0);
-          let upi = Number(row.UPI || 0);
-          let member = Number(row.Member || 0);
-          let credit = Number(row.Credit || 0);
-          let online = Number(row.Online || 0);
-          let ypaynow = Number(row.Yeahpay_Paynow || row.YeahPay_Paynow || row.YeahPay_PayNow || 0);
-          let ycard = Number(row.Yeahpay_Card || row.YeahPay_Card || 0);
+      const dynamicModes = (availablePaymodes && availablePaymodes.length > 0)
+        ? availablePaymodes
+        : Object.keys(rawData[0] || {}).filter(k => k !== 'Date' && k !== 'SortDate' && k !== 'Total' && k !== 'isTotalRow' && k !== 'isGrandTotal');
 
-          if (row.Date === '18/08/2026') {
-            online = 0.01;
+      displayColumns = ['Date', ...dynamicModes, 'Total'];
+
+      mappedData = rawData.map(row => {
+        const outRow = { Date: row.Date || '-' };
+        let rowSum = 0;
+        dynamicModes.forEach(pm => {
+          let val = Number(row[pm] || 0);
+          if (row.Date === '18/08/2026' && pm.toLowerCase() === 'online') {
+            val = 0.01;
           }
-
-          return {
-            Date: row.Date || '-',
-            Cash: cash.toFixed(2),
-            Nets: nets.toFixed(2),
-            Paynow: paynow.toFixed(2),
-            UPI: upi.toFixed(2),
-            Member: member.toFixed(2),
-            Credit: credit.toFixed(2),
-            Online: online.toFixed(2),
-            Yeahpay_Paynow: ypaynow.toFixed(2),
-            Yeahpay_Card: ycard.toFixed(2)
-          };
+          outRow[pm] = val.toFixed(2);
+          rowSum += val;
         });
-      }
-      else {
-        // Fallback: If data is not pivoted, aggregate by date and paymode
-        console.log("Converting Paymode data to pivoted format");
-
-        // Group by Date and PayMode
-        const datePayModeMap = new Map();
-
-        rawData.forEach(row => {
-          const date = row.Date || '-';
-          const payMode = row.PayMode || row.Paymode || 'Unknown';
-          const amount = Number(row.Amount || row.SysAmount || 0);
-
-          if (!datePayModeMap.has(date)) {
-            datePayModeMap.set(date, new Map());
-          }
-          const payModeMap = datePayModeMap.get(date);
-          const currentAmount = payModeMap.get(payMode) || 0;
-          payModeMap.set(payMode, currentAmount + amount);
-        });
-
-        // Convert to pivoted format
-        const pivotedData = [];
-        for (const [date, payModeMap] of datePayModeMap.entries()) {
-          const row = {
-            Date: date,
-            Cash: 0, Cheque: 0, Visa: 0, Master: 0, Amex: 0,
-            Diners: 0, JCB: 0, Nets: 0, Others: 0, Nektar: 0
-          };
-
-          for (const [payMode, amount] of payModeMap.entries()) {
-            const upperPayMode = payMode.toUpperCase();
-            if (upperPayMode === 'CASH') row.Cash = amount;
-            else if (upperPayMode === 'CHEQUE') row.Cheque = amount;
-            else if (upperPayMode === 'VISA') row.Visa = amount;
-            else if (upperPayMode === 'MASTERCARD') row.Master = amount;
-            else if (upperPayMode === 'AMEX') row.Amex = amount;
-            else if (upperPayMode === 'DINERS') row.Diners = amount;
-            else if (upperPayMode === 'JCB') row.JCB = amount;
-            else if (upperPayMode === 'NETS') row.Nets = amount;
-            else if (upperPayMode === 'NEKTAR') row.Nektar = amount;
-            else row.Others += amount;
-          }
-
-          // Calculate Total Cards
-          row['Total'] = row.Visa + row.Master + row.Amex + row.Diners + row.JCB + row.Nets;
-
-          pivotedData.push(row);
-        }
-
-        displayColumns = ['Date', 'Cash', 'Cheque', 'Visa', 'Master', 'Amex', 'Diners', 'JCB', 'Nets', 'Total', 'Others', 'Nektar'];
-        mappedData = pivotedData.map(row => ({
-          Date: row.Date,
-          Cash: row.Cash.toFixed(2),
-          Cheque: row.Cheque.toFixed(2),
-          Visa: row.Visa.toFixed(2),
-          Master: row.Master.toFixed(2),
-          Amex: row.Amex.toFixed(2),
-          Diners: row.Diners.toFixed(2),
-          JCB: row.JCB.toFixed(2),
-          Nets: row.Nets.toFixed(2),
-          'Total': row['Total'].toFixed(2),
-          Others: row.Others.toFixed(2),
-          Nektar: row.Nektar.toFixed(2)
-        }));
-      }
+        outRow['Total'] = (row.Total !== undefined && row.Total !== null) ? Number(row.Total).toFixed(2) : rowSum.toFixed(2);
+        return outRow;
+      });
     }
     else if (req.query.dayEnd === "Terminal") {
       reportTitle = "TERMINAL SALES REPORT";
@@ -6588,8 +6587,17 @@ router.all("/download-pdf", async (req, res) => {
             } else if (col.toLowerCase().replace(/[\s_\-]/g, '').includes('pax')) {
               displayVal = '0';
             }
-            if ((col === 'CancelDate' || col === 'Date') && (req.query.dayEnd === 'Cancellation' || req.query.dayEnd === 'CancellationDetail' || req.query.bySales === 'MealPeriod') && displayVal && displayVal !== '-' && displayVal !== 'Grand Total:') {
-              displayVal = String(displayVal).replace(/\/20(\d{2})$/, '/$1');
+            if ((col === 'CancelDate' || col === 'Date' || col === 'InvoiceDate' || col === 'OrderDate') && displayVal && displayVal !== '-' && displayVal !== 'Grand Total:' && displayVal !== 'TOTAL') {
+              // Convert DD/MM/YYYY or YYYY-MM-DD to DD/MM/YY
+              const dateMatch = String(displayVal).match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+              if (dateMatch) {
+                const day = dateMatch[1].padStart(2, '0');
+                const month = dateMatch[2].padStart(2, '0');
+                const year = dateMatch[3].slice(-2);
+                displayVal = `${day}/${month}/${year}`;
+              } else {
+                displayVal = String(displayVal).replace(/\/20(\d{2})$/, '/$1');
+              }
             }
             if (req.query.orderSales === 'GroupDetail') {
               if (col === 'Qty' || col === 'Amount') {
@@ -6607,9 +6615,9 @@ router.all("/download-pdf", async (req, res) => {
                 alignment = 'center';
               }
             }
-            const isSingleLineReport = req.query.bySales === 'BusinessType' || req.query.bySales === 'MealPeriod';
-            const cellWhiteSpace = (isSingleLineReport || col === 'InvoiceDate' || col === 'InvoiceNo' || col === 'Date' || col === 'CancelDate' || col === 'OrderNo' || col === 'BillNumber' || col === 'OrderNumber' || col === 'CancelTime' || col === 'Time' || col === 'MealPeriod' || col === 'MealPeriodName' || col === 'Type') ? 'nowrap' : 'normal';
-            return `<td style="text-align: ${alignment}; padding: 4px 4px; border: 1px solid #D2D6DA; white-space: ${cellWhiteSpace}; overflow: hidden; text-overflow: ellipsis;">${displayVal}</td>`;
+            const isSingleLineReport = true; // All table values must be strictly single-line
+            const cellWhiteSpace = 'nowrap';
+            return `<td style="text-align: ${alignment}; padding: 4px 3px; border: 1px solid #D2D6DA; white-space: nowrap; word-break: keep-all; overflow-wrap: normal; overflow: visible;">${displayVal}</td>`;
           }).join("")}
               </tr>
             `;
@@ -7320,56 +7328,39 @@ router.all("/download-pdf", async (req, res) => {
           `;
       } else if (req.query.dayEnd === 'Paymode') {
         const dataRows = mappedData.filter(r => !r.isTotalRow);
+        const dynamicModes = (availablePaymodes && availablePaymodes.length > 0)
+          ? availablePaymodes
+          : displayColumns.filter(c => c !== 'Date' && c !== 'SortDate' && c !== 'Total');
 
-        let cashTotal = 0;
-        let netsTotal = 0;
-        let paynowTotal = 0;
-        let upiTotal = 0;
-        let memberTotal = 0;
-        let creditTotal = 0;
-        let onlineTotal = 0;
-        let yPaynowTotal = 0;
-        let yCardTotal = 0;
-        let othersTotal = 0;
+        const modeTotals = {};
+        dynamicModes.forEach(m => { modeTotals[m] = 0; });
+        let grandSum = 0;
 
         dataRows.forEach(r => {
-          cashTotal += parseFloat(r.Cash) || 0;
-          netsTotal += parseFloat(r.Nets) || 0;
-          paynowTotal += parseFloat(r.Paynow || r.PayNow) || 0;
-          upiTotal += parseFloat(r.UPI || r.Upi) || 0;
-          memberTotal += parseFloat(r.Member) || 0;
-          creditTotal += parseFloat(r.Credit) || 0;
-          onlineTotal += parseFloat(r.Online) || 0;
-          yPaynowTotal += parseFloat(r.Yeahpay_Paynow || r.YeahPay_PayNow || 0) || 0;
-          yCardTotal += parseFloat(r.Yeahpay_Card || r.YeahPay_Card || 0) || 0;
-          othersTotal += parseFloat(r.Others) || 0;
+          dynamicModes.forEach(m => {
+            const v = parseFloat(r[m]) || 0;
+            modeTotals[m] += v;
+            grandSum += v;
+          });
         });
 
-        const cashCollection = cashTotal;
-        const memberCollection = memberTotal;
-        const creditCollection = creditTotal;
-        const digitalCollection = netsTotal + paynowTotal + upiTotal + onlineTotal + yPaynowTotal + yCardTotal;
-        const totalCollection = summary ? summary.totalSales : (cashCollection + digitalCollection + memberCollection + creditCollection + othersTotal);
-
-        const modes = [
-          { name: 'CASH', val: cashTotal },
-          { name: 'NETS', val: netsTotal },
-          { name: 'PAYNOW', val: paynowTotal },
-          { name: 'UPI', val: upiTotal },
-          { name: 'MEMBER', val: memberTotal },
-          { name: 'CREDIT', val: creditTotal },
-          { name: 'ONLINE', val: onlineTotal },
-          { name: 'YPAYNOW', val: yPaynowTotal },
-          { name: 'YCARD', val: yCardTotal },
-          { name: 'OTHERS', val: othersTotal }
-        ];
+        const cashKey = dynamicModes.find(m => m.trim().toUpperCase() === 'CASH');
+        const cashCollection = cashKey ? modeTotals[cashKey] : 0;
+        const memberKey = dynamicModes.find(m => m.trim().toUpperCase() === 'MEMBER');
+        const memberCollection = memberKey ? modeTotals[memberKey] : 0;
+        const creditKey = dynamicModes.find(m => m.trim().toUpperCase() === 'CREDIT');
+        const creditCollection = creditKey ? modeTotals[creditKey] : 0;
+        const digitalCollection = dynamicModes
+          .filter(m => !['CASH', 'MEMBER', 'CREDIT', 'FOC'].includes(m.trim().toUpperCase()))
+          .reduce((sum, m) => sum + (modeTotals[m] || 0), 0);
+        const totalCollection = summary ? summary.totalSales : grandSum;
 
         let topPaymentMode = '-';
         let maxVal = 0;
-        modes.forEach(m => {
-          if (m.val > maxVal) {
-            maxVal = m.val;
-            topPaymentMode = m.name;
+        dynamicModes.forEach(m => {
+          if ((modeTotals[m] || 0) > maxVal) {
+            maxVal = modeTotals[m];
+            topPaymentMode = m;
           }
         });
 
@@ -7987,7 +7978,7 @@ router.all("/download-pdf", async (req, res) => {
 
         if (cleanChartRows.length > 0) {
           const reportKey = queryParams.orderSales || queryParams.dayEnd || queryParams.bySales || queryParams.byItem || '';
-          const chartSpec = getSharedReportChartSpec(cleanChartRows, reportKey, reportTitle, fromDate);
+          const chartSpec = getSharedReportChartSpec(cleanChartRows, reportKey, reportTitle, fromDate, availablePaymodes);
           const chartItems = chartSpec.items || [];
           const totalChartVal = chartItems.reduce((sum, p) => sum + (p.value || 0), 0);
 
@@ -8263,11 +8254,12 @@ router.all("/download-pdf", async (req, res) => {
       }
 
       const isPaymode = req.query.dayEnd === 'Paymode';
+      const isAnalysis = req.query.bySales === 'Analysis';
       const isJournal = req.query.bySales === 'Journal';
       const isBusinessTypeOrMeal = req.query.bySales === 'BusinessType' || req.query.bySales === 'MealPeriod';
-      const tableFontSizeTh = isPaymode ? '18px' : (isJournal ? '16px' : (isBusinessTypeOrMeal ? '15.5px' : (req.query.bySales === 'Summary' ? '19px' : (req.query.bySales === 'Analysis' ? '19px' : '21px'))));
-      const tableFontSizeTd = isPaymode ? '17px' : (isJournal ? '15px' : (isBusinessTypeOrMeal ? '14.5px' : (req.query.bySales === 'Summary' ? '18px' : (req.query.bySales === 'Analysis' ? '18px' : '20px'))));
-      const tablePadding = isPaymode ? '5px 2px' : (isJournal ? '5px 2px' : (isBusinessTypeOrMeal ? '4px 3px' : (req.query.bySales === 'Summary' ? '5px 2px' : (req.query.bySales === 'Analysis' ? '5px 2px' : '5px 2px'))));
+      const tableFontSizeTh = isPaymode ? '13px' : (isAnalysis ? '13.5px' : (isJournal ? '14px' : (isBusinessTypeOrMeal ? '14.5px' : (req.query.bySales === 'Summary' ? '16px' : '18px'))));
+      const tableFontSizeTd = isPaymode ? '12.5px' : (isAnalysis ? '13px' : (isJournal ? '13.5px' : (isBusinessTypeOrMeal ? '14px' : (req.query.bySales === 'Summary' ? '15px' : '16px'))));
+      const tablePadding = isPaymode ? '4px 1.5px' : (isAnalysis ? '4px 2px' : (isJournal ? '4px 2px' : (isBusinessTypeOrMeal ? '4px 3px' : (req.query.bySales === 'Summary' ? '5px 2px' : '5px 2px'))));
 
       html = `<!DOCTYPE html>
         <html>
@@ -8298,16 +8290,21 @@ router.all("/download-pdf", async (req, res) => {
               text-align: center; 
               border: 1px solid #D2D6DA; 
               font-weight: 600;
-              white-space: normal; word-wrap: break-word;
-              line-height: 1.3;
+              white-space: nowrap !important;
+              word-break: keep-all !important;
+              overflow-wrap: normal !important;
+              overflow: visible !important;
+              line-height: 1.2;
               font-size: ${tableFontSizeTh};
             }
             .data-table td { 
               border: 1px solid #D2D6DA; 
               padding: ${tablePadding}; 
-              white-space: normal;
-              word-break: break-word;
-              line-height: 1.3;
+              white-space: nowrap !important;
+              word-break: keep-all !important;
+              overflow-wrap: normal !important;
+              overflow: visible !important;
+              line-height: 1.2;
               font-size: ${tableFontSizeTd};
             }
             .data-table tr:nth-child(even) { background-color: #E9EEF3; }
@@ -8480,7 +8477,7 @@ router.all("/download-pdf", async (req, res) => {
         const businessTypeWidths = [12, 11, 7, 6, 12, 8, 8, 8, 14, 14];
         const cancellationWidths = [13, 12, 16, 13, 10, 10, 14, 12];
         const discountWidths = [12, 18, 10, 9, 13, 13, 7, 7, 11];
-        const analysisWidths = [10, 14, 8, 6, 9, 8, 7, 9, 10, 10, 9];
+        const analysisWidths = [9, 13, 7, 5, 10, 8, 7, 8, 11, 11, 11];
         const journalWidths = [14, 13, 12, 12, 12, 12, 11, 14];
         const categoryWidths = [14, 7, 10, 7, 10, 7, 11, 10, 11, 13];
         const guestMealWidths = [12, 18, 11, 9, 9, 9, 11, 21];
@@ -8517,7 +8514,14 @@ router.all("/download-pdf", async (req, res) => {
         else if (isAnalysis) widthStyle = `width: ${analysisWidths[i]}%;`;
         else if (isJournal) widthStyle = `width: ${journalWidths[i]}%;`;
         else if (isCategory) widthStyle = `width: ${categoryWidths[i]}%;`;
-        else if (isGuestMeal) widthStyle = `width: ${guestMealWidths[i]}%;`;
+        else if (isPaymode) {
+          if (col === 'Date') widthStyle = `width: 10%; min-width: 58px;`;
+          else if (col === 'Total') widthStyle = `width: 10%; min-width: 58px;`;
+          else {
+            const modeCount = Math.max(1, displayColumns.length - 2);
+            widthStyle = `width: ${(80 / modeCount).toFixed(2)}%;`;
+          }
+        }
         else if (isItemwise) widthStyle = `width: ${itemwiseWidths[i]}%;`;
         else if (isMonth) widthStyle = `width: ${monthWidths[i]}%;`;
         else if (isQtyDetailReport) widthStyle = `width: ${qtyDetailWidths[i]}%;`;
@@ -8528,7 +8532,7 @@ router.all("/download-pdf", async (req, res) => {
         else if (isGroupReport) widthStyle = `width: ${groupWidths[i]}%;`;
 
         const currentReportType = req.query.bySales || req.query.byItem || queryParams.bySales || queryParams.byItem || '';
-        return `<th style="text-align: center; padding: 5px 2px; white-space: nowrap; ${widthStyle}">${getCompactHeaderLabel(col, currentReportType)}</th>`;
+        return `<th style="text-align: center; padding: 5px 2px; white-space: nowrap; ${widthStyle}" title="${col}">${getCompactHeaderLabel(col, currentReportType)}</th>`;
       }).join('')}</tr>
             </thead>
             <tbody>
@@ -8568,57 +8572,36 @@ router.all("/download-pdf", async (req, res) => {
           const isSummaryReport = req.query.bySales === 'Summary' || queryParams.bySales === 'Summary';
           if (!isSummaryReport && !isAnalysisReport) return '';
 
-          let totalCash = 0, totalNets = 0, totalPaynow = 0, totalUpi = 0, totalMember = 0, totalCredit = 0, totalOnline = 0, totalYPaynow = 0, totalYCard = 0;
+          const modes = (availablePaymodes && availablePaymodes.length > 0)
+            ? availablePaymodes
+            : (paymodeBreakdown ? Object.keys(paymodeBreakdown) : ['CASH', 'NETS', 'PAYNOW', 'UPI', 'MEMBER', 'CREDIT', 'ONLINE', 'Yeahpay Paynow', 'Yeahpay Card']);
 
-          if (isAnalysisReport && paymodeBreakdown) {
-            totalCash = Number(paymodeBreakdown.Cash || 0);
-            totalNets = Number(paymodeBreakdown.Nets || 0);
-            totalPaynow = Number(paymodeBreakdown.PayNow || 0);
-            totalUpi = Number(paymodeBreakdown.UPI || 0);
-            totalMember = Number(paymodeBreakdown.Member || 0);
-            totalCredit = Number(paymodeBreakdown.Credit || 0);
-            totalOnline = Number(paymodeBreakdown.Online || 0);
-            totalYPaynow = Number(paymodeBreakdown.YeahPay_PayNow || 0);
-            totalYCard = Number(paymodeBreakdown.YeahPay_Card || 0);
-          } else {
-            totalCash = mappedData.reduce((sum, r) => sum + Number(r.Cash || 0), 0);
-            totalNets = mappedData.reduce((sum, r) => sum + Number(r.Nets || 0), 0);
-            totalPaynow = mappedData.reduce((sum, r) => sum + Number(r.PayNow || 0), 0);
-            totalUpi = mappedData.reduce((sum, r) => sum + Number(r.UPI || 0), 0);
-            totalMember = mappedData.reduce((sum, r) => sum + Number(r.Member || 0), 0);
-            totalCredit = mappedData.reduce((sum, r) => sum + Number(r.Credit || 0), 0);
-            totalOnline = mappedData.reduce((sum, r) => sum + Number(r.Online || 0), 0);
-            totalYPaynow = mappedData.reduce((sum, r) => sum + Number(r.YeahPay_PayNow || 0), 0);
-            totalYCard = mappedData.reduce((sum, r) => sum + Number(r.YeahPay_Card || 0), 0);
-          }
+          const thHeaders = modes.map(m => {
+            const shortM = getCompactHeaderLabel(m, isAnalysisReport ? 'Analysis' : '');
+            return `<th style="font-size: 13px; padding: 6px 3px; white-space: nowrap !important; word-break: keep-all !important; overflow-wrap: normal !important;" title="${m}">${shortM}</th>`;
+          }).join('');
+
+          const tdCells = modes.map(m => {
+            let val = 0;
+            if (isAnalysisReport && paymodeBreakdown) {
+              val = Number(paymodeBreakdown[m] || 0);
+            } else {
+              val = mappedData.reduce((sum, r) => sum + Number(r[m] || 0), 0);
+            }
+            return `<td style="padding: 6px 3px; text-align: center; border: 1px solid #D2D6DA; font-size: 13px; font-weight: bold; white-space: nowrap !important; word-break: keep-all !important; overflow-wrap: normal !important;">$ ${formatCurrency(val)}</td>`;
+          }).join('');
 
           return `
               <div style="margin-top: 25px; page-break-inside: avoid;">
                 <table class="data-table" style="width: 100%; border-collapse: collapse; margin-top: 5px;">
                   <thead>
                     <tr>
-                      <th style="font-size: 19px; padding: 7px 5px;">CASH</th>
-                      <th style="font-size: 19px; padding: 7px 5px;">NETS</th>
-                      <th style="font-size: 19px; padding: 7px 5px;">PAYNOW</th>
-                      <th style="font-size: 19px; padding: 7px 5px;">UPI</th>
-                      <th style="font-size: 19px; padding: 7px 5px;">MEMBER</th>
-                      <th style="font-size: 19px; padding: 7px 5px;">CREDIT</th>
-                      <th style="font-size: 19px; padding: 7px 5px;">ONLINE</th>
-                      <th style="font-size: 19px; padding: 7px 5px;">YPAYNOW</th>
-                      <th style="font-size: 19px; padding: 7px 5px;">YCARD</th>
+                      ${thHeaders}
                     </tr>
                   </thead>
                   <tbody>
                     <tr>
-                      <td style="padding: 7px 5px; text-align: center; border: 1px solid #D2D6DA; font-size: 18px; font-weight: bold;">$ ${formatCurrency(totalCash)}</td>
-                      <td style="padding: 7px 5px; text-align: center; border: 1px solid #D2D6DA; font-size: 18px; font-weight: bold;">$ ${formatCurrency(totalNets)}</td>
-                      <td style="padding: 7px 5px; text-align: center; border: 1px solid #D2D6DA; font-size: 18px; font-weight: bold;">$ ${formatCurrency(totalPaynow)}</td>
-                      <td style="padding: 7px 5px; text-align: center; border: 1px solid #D2D6DA; font-size: 18px; font-weight: bold;">$ ${formatCurrency(totalUpi)}</td>
-                      <td style="padding: 7px 5px; text-align: center; border: 1px solid #D2D6DA; font-size: 18px; font-weight: bold;">$ ${formatCurrency(totalMember)}</td>
-                      <td style="padding: 7px 5px; text-align: center; border: 1px solid #D2D6DA; font-size: 18px; font-weight: bold;">$ ${formatCurrency(totalCredit)}</td>
-                      <td style="padding: 7px 5px; text-align: center; border: 1px solid #D2D6DA; font-size: 18px; font-weight: bold;">$ ${formatCurrency(totalOnline)}</td>
-                      <td style="padding: 7px 5px; text-align: center; border: 1px solid #D2D6DA; font-size: 18px; font-weight: bold;">$ ${formatCurrency(totalYPaynow)}</td>
-                      <td style="padding: 7px 5px; text-align: center; border: 1px solid #D2D6DA; font-size: 18px; font-weight: bold;">$ ${formatCurrency(totalYCard)}</td>
+                      ${tdCells}
                     </tr>
                   </tbody>
                 </table>
