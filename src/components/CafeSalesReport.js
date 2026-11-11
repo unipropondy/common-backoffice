@@ -4,9 +4,7 @@ import * as XLSX from "xlsx";
 import "./CafeSalesReport.css";
 import SalesReportChart from "./SalesReportChart";
 
-const API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-  ? 'http://localhost:3000'
-  : (process.env.REACT_APP_API_URL || BASE_URL);
+const API_BASE = process.env.REACT_APP_API_URL || BASE_URL;
 const REPORT_BASE = `${API_BASE}/api/reports`;
 
 const getCompactHeaderLabel = (colName, currentReport = "") => {
