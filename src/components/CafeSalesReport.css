@@ -399,37 +399,16 @@
   font-family: 'Cambria', 'Times New Roman', serif;
 }
 
-/* Stronger print override to ensure single-line values, no text wrapping or overlapping */
+/* Stronger print override to ensure larger fonts when printing or generating PDF from browser */
 @media print {
-  html, body, .sales { font-family: 'Cambria', 'Times New Roman', serif !important; font-size: 14px !important; }
-  .sales .report-table th, .sales .professional-table th {
-    font-size: 13px !important;
-    padding: 6px 4px !important;
-    white-space: nowrap !important;
-    word-break: keep-all !important;
-    overflow-wrap: normal !important;
-  }
-  .sales .report-table td, .sales .professional-table td {
-    font-size: 12.5px !important;
-    padding: 5px 3px !important;
-    white-space: nowrap !important;
-    word-break: keep-all !important;
-    overflow-wrap: normal !important;
-  }
-  .sales .report-header .company-name-header { font-size: 24px !important; }
-  .sales .company-address-header, .sales .company-phone-header, .sales .current-datetime { font-size: 14px !important; }
-  .sales .grand-total-container, .sales .professional-table .grand-total-row td {
-    font-size: 13px !important;
-    white-space: nowrap !important;
-    word-break: keep-all !important;
-    overflow-wrap: normal !important;
-  }
-  /* Ensure table doesn't shrink too aggressively and remains single-line */
-  .sales .report-table, .sales .professional-table {
-    border-collapse: collapse;
-    width: 100% !important;
-    table-layout: auto !important;
-  }
+  html, body, .sales { font-family: 'Cambria', 'Times New Roman', serif !important; font-size: 19px !important; }
+  .sales .report-table th, .sales .professional-table th { font-size: 20px !important; padding: 10px 12px !important; }
+  .sales .report-table td, .sales .professional-table td { font-size: 18px !important; padding: 8px 10px !important; }
+  .sales .report-header .company-name-header { font-size: 28px !important; }
+  .sales .company-address-header, .sales .company-phone-header, .sales .current-datetime { font-size: 17px !important; }
+  .sales .grand-total-container, .sales .professional-table .grand-total-row td { font-size: 20px !important; }
+  /* Ensure table doesn't shrink too aggressively */
+  .sales .report-table, .sales .professional-table { border-collapse: collapse; width: 100% !important; }
 }
  
 /* RESPONSIVE */
