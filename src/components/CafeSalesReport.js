@@ -169,25 +169,16 @@ const getCompactHeaderLabel = (colName, currentReport = "") => {
   if (labelMap[clean]) return labelMap[clean];
   if (labelMap[colName]) return labelMap[colName];
 
-  // Dynamic Paymode shortening rule for long names:
-  // Examples:
-  // "Yeahpay Paynow" / "YeahPay PayNow" -> "YPAY-PN"
-  // "Yeahpay Card" / "YeahPay Card" -> "YPAY-CARD"
-  const upper = clean.toUpperCase().replace(/\s+/g, ' ');
-  if (upper === 'YEAHPAY PAYNOW' || upper === 'YEAHPAY_PAYNOW' || upper === 'YPAYNOW' || upper === 'Y.PAYNOW') {
-    return 'YPAY-PN';
-  }
-  if (upper === 'YEAHPAY CARD' || upper === 'YEAHPAY_CARD' || upper === 'YCARD' || upper === 'Y.CARD') {
-    return 'YPAY-CARD';
-  }
+  // Dynamic Paymode shortening rule for long names (> 8 chars):
+  // e.g. "YeahPay PayNow" -> "Y.PAYNOW", "YeahPay Card" -> "Y.CARD"
+  const upper = clean.toUpperCase();
   if (upper.startsWith('YEAHPAY ') || upper.startsWith('YEAHPAY_')) {
-    const rest = upper.replace(/^YEAHPAY[\s_]+/, '');
-    return ('YPAY-' + rest).slice(0, 10);
+    return 'Y.' + upper.replace(/^YEAHPAY[\s_]+/, '');
   }
-  if (upper.length > 9) {
+  if (upper.length > 10) {
     const parts = upper.split(/[\s_]+/);
     if (parts.length > 1) {
-      return parts.map((p, idx) => idx < parts.length - 1 ? p[0] : p).join('-').slice(0, 10);
+      return parts.map((p, idx) => idx < parts.length - 1 ? p[0] + '.' : p).join('');
     }
   }
 
@@ -4221,24 +4212,11 @@ const CafeSalesReport = ({
                             <tr key={i} className={rowClass}>
                               {displayColumns.map((col, idx) => {
                                 let value = item[col];
-                                // Format Date fields to DD/MM/YY
-                                if ((col === 'Date' || col === 'InvoiceDate' || col === 'OrderDate' || col === 'CancelDate') && value && value !== '-' && value !== 'Grand Total:' && value !== 'TOTAL') {
-                                  if (typeof value === 'object' && value instanceof Date && !isNaN(value.getTime())) {
-                                    const d = String(value.getDate()).padStart(2, '0');
-                                    const m = String(value.getMonth() + 1).padStart(2, '0');
-                                    const y = String(value.getFullYear()).slice(-2);
-                                    value = `${d}/${m}/${y}`;
-                                  } else {
-                                    const s = String(value).trim();
-                                    const m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
-                                    if (m) {
-                                      const day = m[1].padStart(2, '0');
-                                      const mon = m[2].padStart(2, '0');
-                                      const yr = m[3].slice(-2);
-                                      value = `${day}/${mon}/${yr}`;
-                                    } else {
-                                      value = s.replace(/\/20(\d{2})$/, '/$1');
-                                    }
+                                // Format Date fields
+                                if (col === 'Date' && value) {
+                                  const dateObj = new Date(value);
+                                  if (!isNaN(dateObj.getTime()) && typeof value === 'object') {
+                                    value = dateObj.toLocaleDateString('en-GB');
                                   }
                                 }
                                 const isTextCol = getIsTextCol(col);
@@ -4281,8 +4259,8 @@ const CafeSalesReport = ({
                                     textAlign: cellAlign,
                                     padding: (orderSales === "GroupDetail" || dayEnd === "DiscountDetail") ? '10px 14px' : '6px 4px',
                                     whiteSpace: 'nowrap',
-                                    wordBreak: 'keep-all',
-                                    overflowWrap: 'normal',
+                                    wordBreak: 'normal',
+                                    wordWrap: 'normal',
                                     fontWeight: isTotal ? 'bold' : 'normal',
                                     fontSize: '13px',
                                     minWidth: colMinWidth
@@ -4360,18 +4338,14 @@ const CafeSalesReport = ({
                           <thead>
                             <tr>
                               {modes.map((m, idx) => (
-                                <th key={idx} style={{ textAlign: 'center', whiteSpace: 'nowrap', wordBreak: 'keep-all', overflowWrap: 'normal' }} title={m}>
-                                  {getCompactHeaderLabel(m, bySales)}
-                                </th>
+                                <th key={idx} style={{ textAlign: 'center' }}>{m}</th>
                               ))}
                             </tr>
                           </thead>
                           <tbody>
                             <tr>
                               {modes.map((m, idx) => (
-                                <td key={idx} style={{ textAlign: 'center', whiteSpace: 'nowrap', wordBreak: 'keep-all', overflowWrap: 'normal' }}>
-                                  {formatNumber(modeAmounts[m])}
-                                </td>
+                                <td key={idx} style={{ textAlign: 'center' }}>{formatNumber(modeAmounts[m])}</td>
                               ))}
                             </tr>
                             <tr className="grand-total-row">

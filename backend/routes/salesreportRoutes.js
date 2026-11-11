@@ -2792,7 +2792,7 @@ router.get("/download-gst-pdf", async (req, res) => {
         <table class="header-table">
           <tr><td class="logo-cell">${logoBase64 ? `<img src="${logoBase64}" alt="Company Logo">` : ''}</td>
           <td class="company-cell"><div class="company-name">${companyName}</div><div class="company-address">${fullAddress || defaultAddress}</div></td>
-          <td class="pos-logo-cell">${posLogoBase64 ? `<img src="${posLogoBase64}" alt="POS Logo">` : ''}</td></tr>
+          <td class="spacer-cell"></td>
         </table>
         <div class="report-title">GST REPORT</div>
         <div class="report-subtitle">As on ${fromDate} to ${toDate}</div>
@@ -4806,25 +4806,16 @@ const getCompactHeaderLabel = (columnName, currentReport) => {
   if (labelMap[clean]) return labelMap[clean];
   if (labelMap[columnName]) return labelMap[columnName];
 
-  // Dynamic Paymode shortening rule for long names:
-  // Examples:
-  // "Yeahpay Paynow" / "YeahPay PayNow" -> "YPAY-PN"
-  // "Yeahpay Card" / "YeahPay Card" -> "YPAY-CARD"
-  const upper = clean.toUpperCase().replace(/\s+/g, ' ');
-  if (upper === 'YEAHPAY PAYNOW' || upper === 'YEAHPAY_PAYNOW' || upper === 'YPAYNOW' || upper === 'Y.PAYNOW') {
-    return 'YPAY-PN';
-  }
-  if (upper === 'YEAHPAY CARD' || upper === 'YEAHPAY_CARD' || upper === 'YCARD' || upper === 'Y.CARD') {
-    return 'YPAY-CARD';
-  }
+  // Dynamic Paymode shortening rule for long names (> 8 chars):
+  // e.g. "YeahPay PayNow" -> "Y.PAYNOW", "YeahPay Card" -> "Y.CARD"
+  const upper = clean.toUpperCase();
   if (upper.startsWith('YEAHPAY ') || upper.startsWith('YEAHPAY_')) {
-    const rest = upper.replace(/^YEAHPAY[\s_]+/, '');
-    return ('YPAY-' + rest).slice(0, 10);
+    return 'Y.' + upper.replace(/^YEAHPAY[\s_]+/, '');
   }
-  if (upper.length > 9) {
+  if (upper.length > 10) {
     const parts = upper.split(/[\s_]+/);
     if (parts.length > 1) {
-      return parts.map((p, idx) => idx < parts.length - 1 ? p[0] : p).join('-').slice(0, 10);
+      return parts.map((p, idx) => idx < parts.length - 1 ? p[0] + '.' : p).join('');
     }
   }
 
@@ -6587,17 +6578,8 @@ router.all("/download-pdf", async (req, res) => {
             } else if (col.toLowerCase().replace(/[\s_\-]/g, '').includes('pax')) {
               displayVal = '0';
             }
-            if ((col === 'CancelDate' || col === 'Date' || col === 'InvoiceDate' || col === 'OrderDate') && displayVal && displayVal !== '-' && displayVal !== 'Grand Total:' && displayVal !== 'TOTAL') {
-              // Convert DD/MM/YYYY or YYYY-MM-DD to DD/MM/YY
-              const dateMatch = String(displayVal).match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
-              if (dateMatch) {
-                const day = dateMatch[1].padStart(2, '0');
-                const month = dateMatch[2].padStart(2, '0');
-                const year = dateMatch[3].slice(-2);
-                displayVal = `${day}/${month}/${year}`;
-              } else {
-                displayVal = String(displayVal).replace(/\/20(\d{2})$/, '/$1');
-              }
+            if ((col === 'CancelDate' || col === 'Date') && (req.query.dayEnd === 'Cancellation' || req.query.dayEnd === 'CancellationDetail' || req.query.bySales === 'MealPeriod') && displayVal && displayVal !== '-' && displayVal !== 'Grand Total:') {
+              displayVal = String(displayVal).replace(/\/20(\d{2})$/, '/$1');
             }
             if (req.query.orderSales === 'GroupDetail') {
               if (col === 'Qty' || col === 'Amount') {
@@ -6615,9 +6597,9 @@ router.all("/download-pdf", async (req, res) => {
                 alignment = 'center';
               }
             }
-            const isSingleLineReport = true; // All table values must be strictly single-line
-            const cellWhiteSpace = 'nowrap';
-            return `<td style="text-align: ${alignment}; padding: 4px 3px; border: 1px solid #D2D6DA; white-space: nowrap; word-break: keep-all; overflow-wrap: normal; overflow: visible;">${displayVal}</td>`;
+            const isSingleLineReport = req.query.bySales === 'BusinessType' || req.query.bySales === 'MealPeriod';
+            const cellWhiteSpace = (isSingleLineReport || col === 'InvoiceDate' || col === 'InvoiceNo' || col === 'Date' || col === 'CancelDate' || col === 'OrderNo' || col === 'BillNumber' || col === 'OrderNumber' || col === 'CancelTime' || col === 'Time' || col === 'MealPeriod' || col === 'MealPeriodName' || col === 'Type') ? 'nowrap' : 'normal';
+            return `<td style="text-align: ${alignment}; padding: 4px 4px; border: 1px solid #D2D6DA; white-space: ${cellWhiteSpace}; overflow: hidden; text-overflow: ellipsis;">${displayVal}</td>`;
           }).join("")}
               </tr>
             `;
@@ -8254,12 +8236,11 @@ router.all("/download-pdf", async (req, res) => {
       }
 
       const isPaymode = req.query.dayEnd === 'Paymode';
-      const isAnalysis = req.query.bySales === 'Analysis';
       const isJournal = req.query.bySales === 'Journal';
       const isBusinessTypeOrMeal = req.query.bySales === 'BusinessType' || req.query.bySales === 'MealPeriod';
-      const tableFontSizeTh = isPaymode ? '13px' : (isAnalysis ? '13.5px' : (isJournal ? '14px' : (isBusinessTypeOrMeal ? '14.5px' : (req.query.bySales === 'Summary' ? '16px' : '18px'))));
-      const tableFontSizeTd = isPaymode ? '12.5px' : (isAnalysis ? '13px' : (isJournal ? '13.5px' : (isBusinessTypeOrMeal ? '14px' : (req.query.bySales === 'Summary' ? '15px' : '16px'))));
-      const tablePadding = isPaymode ? '4px 1.5px' : (isAnalysis ? '4px 2px' : (isJournal ? '4px 2px' : (isBusinessTypeOrMeal ? '4px 3px' : (req.query.bySales === 'Summary' ? '5px 2px' : '5px 2px'))));
+      const tableFontSizeTh = isPaymode ? '18px' : (isJournal ? '16px' : (isBusinessTypeOrMeal ? '15.5px' : (req.query.bySales === 'Summary' ? '19px' : (req.query.bySales === 'Analysis' ? '19px' : '21px'))));
+      const tableFontSizeTd = isPaymode ? '17px' : (isJournal ? '15px' : (isBusinessTypeOrMeal ? '14.5px' : (req.query.bySales === 'Summary' ? '18px' : (req.query.bySales === 'Analysis' ? '18px' : '20px'))));
+      const tablePadding = isPaymode ? '5px 2px' : (isJournal ? '5px 2px' : (isBusinessTypeOrMeal ? '4px 3px' : (req.query.bySales === 'Summary' ? '5px 2px' : (req.query.bySales === 'Analysis' ? '5px 2px' : '5px 2px'))));
 
       html = `<!DOCTYPE html>
         <html>
@@ -8290,21 +8271,16 @@ router.all("/download-pdf", async (req, res) => {
               text-align: center; 
               border: 1px solid #D2D6DA; 
               font-weight: 600;
-              white-space: nowrap !important;
-              word-break: keep-all !important;
-              overflow-wrap: normal !important;
-              overflow: visible !important;
-              line-height: 1.2;
+              white-space: normal; word-wrap: break-word;
+              line-height: 1.3;
               font-size: ${tableFontSizeTh};
             }
             .data-table td { 
               border: 1px solid #D2D6DA; 
               padding: ${tablePadding}; 
-              white-space: nowrap !important;
-              word-break: keep-all !important;
-              overflow-wrap: normal !important;
-              overflow: visible !important;
-              line-height: 1.2;
+              white-space: normal;
+              word-break: break-word;
+              line-height: 1.3;
               font-size: ${tableFontSizeTd};
             }
             .data-table tr:nth-child(even) { background-color: #E9EEF3; }
@@ -8477,7 +8453,7 @@ router.all("/download-pdf", async (req, res) => {
         const businessTypeWidths = [12, 11, 7, 6, 12, 8, 8, 8, 14, 14];
         const cancellationWidths = [13, 12, 16, 13, 10, 10, 14, 12];
         const discountWidths = [12, 18, 10, 9, 13, 13, 7, 7, 11];
-        const analysisWidths = [9, 13, 7, 5, 10, 8, 7, 8, 11, 11, 11];
+        const analysisWidths = [10, 14, 8, 6, 9, 8, 7, 9, 10, 10, 9];
         const journalWidths = [14, 13, 12, 12, 12, 12, 11, 14];
         const categoryWidths = [14, 7, 10, 7, 10, 7, 11, 10, 11, 13];
         const guestMealWidths = [12, 18, 11, 9, 9, 9, 11, 21];
@@ -8515,12 +8491,7 @@ router.all("/download-pdf", async (req, res) => {
         else if (isJournal) widthStyle = `width: ${journalWidths[i]}%;`;
         else if (isCategory) widthStyle = `width: ${categoryWidths[i]}%;`;
         else if (isPaymode) {
-          if (col === 'Date') widthStyle = `width: 10%; min-width: 58px;`;
-          else if (col === 'Total') widthStyle = `width: 10%; min-width: 58px;`;
-          else {
-            const modeCount = Math.max(1, displayColumns.length - 2);
-            widthStyle = `width: ${(80 / modeCount).toFixed(2)}%;`;
-          }
+          widthStyle = `width: ${(100 / displayColumns.length).toFixed(2)}%;`;
         }
         else if (isItemwise) widthStyle = `width: ${itemwiseWidths[i]}%;`;
         else if (isMonth) widthStyle = `width: ${monthWidths[i]}%;`;
@@ -8576,10 +8547,7 @@ router.all("/download-pdf", async (req, res) => {
             ? availablePaymodes
             : (paymodeBreakdown ? Object.keys(paymodeBreakdown) : ['CASH', 'NETS', 'PAYNOW', 'UPI', 'MEMBER', 'CREDIT', 'ONLINE', 'Yeahpay Paynow', 'Yeahpay Card']);
 
-          const thHeaders = modes.map(m => {
-            const shortM = getCompactHeaderLabel(m, isAnalysisReport ? 'Analysis' : '');
-            return `<th style="font-size: 13px; padding: 6px 3px; white-space: nowrap !important; word-break: keep-all !important; overflow-wrap: normal !important;" title="${m}">${shortM}</th>`;
-          }).join('');
+          const thHeaders = modes.map(m => `<th style="font-size: 15px; padding: 7px 5px; white-space: nowrap;">${m}</th>`).join('');
 
           const tdCells = modes.map(m => {
             let val = 0;
@@ -8588,7 +8556,7 @@ router.all("/download-pdf", async (req, res) => {
             } else {
               val = mappedData.reduce((sum, r) => sum + Number(r[m] || 0), 0);
             }
-            return `<td style="padding: 6px 3px; text-align: center; border: 1px solid #D2D6DA; font-size: 13px; font-weight: bold; white-space: nowrap !important; word-break: keep-all !important; overflow-wrap: normal !important;">$ ${formatCurrency(val)}</td>`;
+            return `<td style="padding: 7px 5px; text-align: center; border: 1px solid #D2D6DA; font-size: 14px; font-weight: bold; white-space: nowrap;">$ ${formatCurrency(val)}</td>`;
           }).join('');
 
           return `
